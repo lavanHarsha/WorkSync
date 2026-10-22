@@ -174,3 +174,4 @@ npm run dev
 - `POST /api/apps/:appId/connect` - Connect application credentials
 - `POST /api/apps/:appId/disconnect` - Disconnect application
 # WorkSync
+# WorkSync
