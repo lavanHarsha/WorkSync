@@ -1,0 +1,99 @@
+services:
+  mongo:
+    image: mongo:7.0
+    container_name: worksync-mongo
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - worksync-net
+
+  redis:
+    image: redis:7-alpine
+    container_name: worksync-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+    networks:
+      - worksync-net
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: worksync-backend
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    depends_on:
+      mongo:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    env_file:
+      - path: .env
+        required: false
+      - path: ./backend/.env
+        required: false
+    environment:
+      - PORT=5000
+      - NODE_ENV=${NODE_ENV:-production}
+      - MONGODB_URI=${MONGODB_URI:-mongodb://mongo:27017/worksync}
+      - REDIS_URL=${REDIS_URL:-redis://redis:6379}
+      - ENCRYPTION_KEY=${ENCRYPTION_KEY}
+      - JWT_SECRET=${JWT_SECRET:-worksync-production-jwt-secret-replace-me}
+      - JWT_REFRESH_SECRET=${JWT_REFRESH_SECRET:-}
+      - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:5173,http://localhost:3000,http://localhost:80,http://localhost}
+      - API_PUBLIC_URL=${API_PUBLIC_URL:-http://localhost:5000}
+      - FRONTEND_URL=${FRONTEND_URL:-http://localhost:5173}
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID:-}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET:-}
+      - GITHUB_CLIENT_ID=${GITHUB_CLIENT_ID:-}
+      - GITHUB_CLIENT_SECRET=${GITHUB_CLIENT_SECRET:-}
+      - NOTION_CLIENT_ID=${NOTION_CLIENT_ID:-}
+      - NOTION_CLIENT_SECRET=${NOTION_CLIENT_SECRET:-}
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+    networks:
+      - worksync-net
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        - VITE_API_URL=/api
+    container_name: worksync-frontend
+    restart: unless-stopped
+    ports:
+      - "5173:80"
+      - "80:80"
+    depends_on:
+      - backend
+    environment:
+      - VITE_API_URL=/api
+    networks:
+      - worksync-net
+
+volumes:
+  mongo_data:
+  redis_data:
+
+networks:
+  worksync-net:
+    driver: bridge
