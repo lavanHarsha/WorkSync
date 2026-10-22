@@ -374,6 +374,7 @@ export class ExecutionEngine {
     let actionResult;
     let executionStatus: 'success' | 'failed' = 'success';
     let errorMessage: string | undefined = undefined;
+    let actionError: any = undefined;
 
     try {
       actionResult = await this.executeActionMock(workflow, interpolatedParams, triggerData);
@@ -389,6 +390,7 @@ export class ExecutionEngine {
         data: actionResult.data,
       });
     } catch (err: any) {
+      actionError = err;
       executionStatus = 'failed';
       const errText = err.message || 'Action step execution failed';
       errorMessage = errText;
@@ -424,6 +426,10 @@ export class ExecutionEngine {
       $inc: { executionCount: 1 },
       lastExecutedAt: new Date(endTime),
     });
+
+    if (actionError) {
+      throw actionError;
+    }
 
     return execution;
   }

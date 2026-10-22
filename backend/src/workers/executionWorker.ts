@@ -1,9 +1,10 @@
-import { Worker, Job } from 'bullmq';
+import { Worker, Job, UnrecoverableError } from 'bullmq';
 import Redis from 'ioredis';
 import { ExecutionJobData } from '../queues/executionQueue';
 import { ExecutionEngine } from '../services/executionEngine';
 import { Workflow } from '../models/Workflow';
 import { Execution } from '../models/Execution';
+import { IntegrationError } from '../integrations/errors';
 
 const redisConnection = new Redis(process.env.REDIS_URL || 'redis://localhost:6379', {
   maxRetriesPerRequest: null,
@@ -69,33 +70,71 @@ export const executionWorker = new Worker<ExecutionJobData>(
     } catch (error: any) {
       console.error(`[Worker] Job ${job.id} failed:`, error.message);
 
-      // Create a failed execution record if workflow was found
-      const workflow = await Workflow.findById(workflowId);
-      if (workflow) {
-        await Execution.create({
-          workflowId: workflow._id,
-          userId,
-          triggerData: customTriggerData || {},
-          actionData: {},
-          status: 'failed',
-          error: error.message,
-          startedAt: new Date(),
-          completedAt: new Date(),
-          duration: 0,
-          logs: [
-            {
-              step: 'error',
-              title: 'Job processing failed',
-              status: 'failed',
-              message: error.message,
-              timestamp: new Date(),
-            },
-          ],
-          jobId: job.id as string,
+      // Check if executeWorkflow already created an Execution record for this run
+      const latestExecution = await Execution.findOne({
+        workflowId,
+        userId,
+        status: 'failed',
+      }).sort({ createdAt: -1 });
+
+      if (latestExecution && !latestExecution.jobId) {
+        await Execution.findByIdAndUpdate(latestExecution._id, {
+          $set: {
+            jobId: job.id as string,
+            isScheduled: isScheduled || false,
+          },
         });
+      } else if (!latestExecution) {
+        // Fallback: Create a failed execution record if workflow was found but no execution was logged
+        const workflow = await Workflow.findById(workflowId);
+        if (workflow) {
+          await Execution.create({
+            workflowId: workflow._id,
+            userId,
+            triggerData: customTriggerData || {},
+            actionData: {},
+            status: 'failed',
+            error: error.message,
+            startedAt: new Date(),
+            completedAt: new Date(),
+            duration: 0,
+            logs: [
+              {
+                step: 'error',
+                title: 'Job processing failed',
+                status: 'failed',
+                message: error.message,
+                timestamp: new Date(),
+              },
+            ],
+            jobId: job.id as string,
+            isScheduled: isScheduled || false,
+          });
+        }
       }
 
-      throw error; // Re-throw to trigger BullMQ retry logic
+      // Check if this is a non-retryable integration error
+      const isNonRetryable =
+        (error instanceof IntegrationError && !error.retryable) ||
+        (error?.name === 'IntegrationError' && error?.retryable === false);
+
+      if (isNonRetryable) {
+        console.log(
+          `[Worker] Job ${job.id} failed with non-retryable IntegrationError (${error.code || error.message}). Failing immediately without retry.`
+        );
+        if (typeof (job as any).discard === 'function') {
+          (job as any).discard();
+        }
+        const unrecoverable = new UnrecoverableError(error.message);
+        unrecoverable.cause = error;
+        (unrecoverable as any).app = error.app;
+        (unrecoverable as any).code = error.code;
+        (unrecoverable as any).statusCode = error.statusCode;
+        (unrecoverable as any).retryable = false;
+        throw unrecoverable;
+      }
+
+      throw error; // Re-throw retryable error to trigger BullMQ exponential backoff
     }
   },
   {

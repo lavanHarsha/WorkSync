@@ -27,6 +27,10 @@ export const AppsPage: React.FC = () => {
   const [apiKeyInput, setApiKeyInput] = useState('');
   const [isConnecting, setIsConnecting] = useState(false);
   const [connectionSuccess, setConnectionSuccess] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
+
+  const isOAuthApp = (appId: string) => ['gmail', 'google_sheets', 'github', 'notion'].includes(appId);
+  const isWebhookApp = (appId: string) => ['slack', 'discord', 'teams'].includes(appId);
 
   const fetchApps = async () => {
     try {
@@ -44,32 +48,59 @@ export const AppsPage: React.FC = () => {
 
   useEffect(() => {
     fetchApps();
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('connected') === 'true') {
+      window.history.replaceState({}, '', window.location.pathname);
+    }
   }, []);
 
   const handleOpenConnect = (app: IAppDefinition) => {
     setSelectedApp(app);
     setApiKeyInput(app.connected ? '••••••••••••••••••••••••' : '');
     setConnectionSuccess(false);
+    setErrorMessage('');
   };
 
   const handleConnect = async () => {
     if (!selectedApp) return;
     setIsConnecting(true);
+    setErrorMessage('');
     try {
-      const res = await api.connectApp(selectedApp.id, {
-        simulated: true,
-        token: apiKeyInput || 'ws_token_' + Math.random().toString(36).substring(2, 10),
-      });
-      if (res.success) {
-        setConnectionSuccess(true);
-        setApps((prev) =>
-          prev.map((a) => (a.id === selectedApp.id ? { ...a, connected: true } : a))
-        );
-        setTimeout(() => {
-          setSelectedApp(null);
-        }, 1200);
+      if (isOAuthApp(selectedApp.id)) {
+        const res = await api.getOAuthStartUrl(selectedApp.id);
+        if (res.success && res.url) {
+          window.location.href = res.url;
+          return;
+        }
+      } else if (isWebhookApp(selectedApp.id)) {
+        const res = await api.connectApp(selectedApp.id, {
+          webhookUrl: apiKeyInput.trim(),
+        });
+        if (res.success) {
+          setConnectionSuccess(true);
+          setApps((prev) =>
+            prev.map((a) => (a.id === selectedApp.id ? { ...a, connected: true } : a))
+          );
+          setTimeout(() => {
+            setSelectedApp(null);
+          }, 1200);
+        }
+      } else {
+        const res = await api.connectApp(selectedApp.id, {
+          token: apiKeyInput || 'ws_token_' + Math.random().toString(36).substring(2, 10),
+        });
+        if (res.success) {
+          setConnectionSuccess(true);
+          setApps((prev) =>
+            prev.map((a) => (a.id === selectedApp.id ? { ...a, connected: true } : a))
+          );
+          setTimeout(() => {
+            setSelectedApp(null);
+          }, 1200);
+        }
       }
-    } catch (err) {
+    } catch (err: any) {
+      setErrorMessage(err.message || 'Failed to connect app');
       console.error('Failed to connect app:', err);
     } finally {
       setIsConnecting(false);
@@ -79,6 +110,7 @@ export const AppsPage: React.FC = () => {
   const handleDisconnect = async () => {
     if (!selectedApp) return;
     setIsConnecting(true);
+    setErrorMessage('');
     try {
       const res = await api.disconnectApp(selectedApp.id);
       if (res.success) {
@@ -87,7 +119,8 @@ export const AppsPage: React.FC = () => {
         );
         setSelectedApp(null);
       }
-    } catch (err) {
+    } catch (err: any) {
+      setErrorMessage(err.message || 'Failed to disconnect app');
       console.error('Failed to disconnect app:', err);
     } finally {
       setIsConnecting(false);
@@ -230,32 +263,80 @@ export const AppsPage: React.FC = () => {
               Authorize WorkSync to securely exchange triggers and execute actions on behalf of your {selectedApp.name} account.
             </p>
 
-            <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-3">
-              <div className="flex items-center gap-2 text-xs font-semibold text-slate-700">
-                <Shield size={14} className="text-brand-600" />
-                <span>Simulated OAuth 2.0 / API Credentials</span>
+            {isOAuthApp(selectedApp.id) ? (
+              <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-3">
+                <div className="flex items-center gap-2 text-xs font-semibold text-slate-700">
+                  <Shield size={14} className="text-brand-600" />
+                  <span>OAuth 2.0 Authorization</span>
+                </div>
+                <p className="text-xs text-slate-600">
+                  Connecting to {selectedApp.name} will redirect you to the {selectedApp.name} authorization screen to grant secure access.
+                </p>
               </div>
-              <div>
-                <label className="block text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-1">
-                  API Key or Access Token
-                </label>
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
-                    <Key size={14} />
+            ) : isWebhookApp(selectedApp.id) ? (
+              <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-3">
+                <div className="flex items-center gap-2 text-xs font-semibold text-slate-700">
+                  <Shield size={14} className="text-brand-600" />
+                  <span>Incoming Webhook URL</span>
+                </div>
+                <div>
+                  <label className="block text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-1">
+                    Webhook URL
+                  </label>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                      <Key size={14} />
+                    </div>
+                    <input
+                      type="url"
+                      value={apiKeyInput}
+                      onChange={(e) => setApiKeyInput(e.target.value)}
+                      placeholder={
+                        selectedApp.id === 'slack'
+                          ? 'https://hooks.slack.com/services/...'
+                          : selectedApp.id === 'discord'
+                          ? 'https://discord.com/api/webhooks/...'
+                          : 'https://...webhook.office.com/...'
+                      }
+                      className="w-full pl-9 pr-3 py-2 bg-white rounded-xl border border-slate-200 text-xs font-mono text-slate-800"
+                    />
                   </div>
-                  <input
-                    type="password"
-                    value={apiKeyInput}
-                    onChange={(e) => setApiKeyInput(e.target.value)}
-                    placeholder="Enter API key or leave blank for auto-token"
-                    className="w-full pl-9 pr-3 py-2 bg-white rounded-xl border border-slate-200 text-xs font-mono text-slate-800"
-                  />
+                </div>
+                <p className="text-[11px] text-slate-400">
+                  Paste your {selectedApp.name} webhook URL to deliver real notifications directly into your channel.
+                </p>
+              </div>
+            ) : (
+              <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-3">
+                <div className="flex items-center gap-2 text-xs font-semibold text-slate-700">
+                  <Shield size={14} className="text-brand-600" />
+                  <span>Credentials</span>
+                </div>
+                <div>
+                  <label className="block text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-1">
+                    API Key or Access Token
+                  </label>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                      <Key size={14} />
+                    </div>
+                    <input
+                      type="password"
+                      value={apiKeyInput}
+                      onChange={(e) => setApiKeyInput(e.target.value)}
+                      placeholder="Enter API key or leave blank for auto-token"
+                      className="w-full pl-9 pr-3 py-2 bg-white rounded-xl border border-slate-200 text-xs font-mono text-slate-800"
+                    />
+                  </div>
                 </div>
               </div>
-              <p className="text-[11px] text-slate-400">
-                Mock/simulation layer active: WorkSync securely generates simulated credentials for this academic environment.
-              </p>
-            </div>
+            )}
+
+            {errorMessage && (
+              <div className="p-3 bg-rose-50 rounded-xl border border-rose-200 text-rose-700 text-xs flex items-center gap-2">
+                <span>{errorMessage}</span>
+              </div>
+            )}
 
             {connectionSuccess && (
               <div className="p-3 bg-emerald-50 rounded-xl border border-emerald-200 text-emerald-800 text-xs flex items-center gap-2">
@@ -293,8 +374,20 @@ export const AppsPage: React.FC = () => {
                   disabled={isConnecting}
                   className="inline-flex items-center gap-1.5 px-5 py-2 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-xs font-bold shadow-md shadow-brand-500/20"
                 >
-                  {isConnecting ? <Loader2 size={14} className="animate-spin" /> : <Plug size={14} />}
-                  <span>{selectedApp.connected ? 'Save & Reconnect' : 'Authorize & Connect'}</span>
+                  {isConnecting ? (
+                    <Loader2 size={14} className="animate-spin" />
+                  ) : (
+                    <Plug size={14} />
+                  )}
+                  <span>
+                    {isOAuthApp(selectedApp.id)
+                      ? isConnecting
+                        ? 'Redirecting...'
+                        : `Authorize with ${selectedApp.name}`
+                      : selectedApp.connected
+                      ? 'Save & Reconnect'
+                      : 'Authorize & Connect'}
+                  </span>
                 </button>
               </div>
             </div>

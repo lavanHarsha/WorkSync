@@ -16,7 +16,8 @@ export type ActionApp =
   | 'discord'
   | 'teams'
   | 'webhook'
-  | 'notion';
+  | 'notion'
+  | 'github';
 
 export type ExecutionStatus = 'success' | 'running' | 'failed';
 

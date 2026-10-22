@@ -252,6 +252,10 @@ class ApiService {
     });
   }
 
+  async getOAuthStartUrl(appId: string) {
+    return this.request<{ success: boolean; url: string }>(`/apps/${appId}/oauth/start?mode=json`);
+  }
+
   async disconnectApp(appId: string) {
     return this.request<{ success: boolean; message: string }>(`/apps/${appId}/disconnect`, {
       method: 'POST',

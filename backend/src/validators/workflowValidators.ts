@@ -14,7 +14,7 @@ const triggerSchema = z.object({
 });
 
 const actionSchema = z.object({
-  app: z.enum(['slack', 'gmail', 'google_sheets', 'discord', 'teams', 'webhook', 'notion']),
+  app: z.enum(['slack', 'gmail', 'google_sheets', 'discord', 'teams', 'webhook', 'notion', 'github']),
   action: z.string().trim().min(1).max(100),
   parameters: params.optional().default({}),
 });

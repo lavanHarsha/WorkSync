@@ -1,5 +1,8 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { ExecutionEngine } from './executionEngine';
+import { IntegrationError } from '../integrations/errors';
+import { Execution } from '../models/Execution';
+import { Workflow } from '../models/Workflow';
 
 describe('ExecutionEngine - Condition Evaluator', () => {
   it('should pass when no conditions are defined', () => {
@@ -154,5 +157,93 @@ describe('ExecutionEngine - Variable Interpolation', () => {
     expect(ExecutionEngine.interpolateVariables(1234, {})).toBe(1234);
     expect(ExecutionEngine.interpolateVariables(true, {})).toBe(true);
     expect(ExecutionEngine.interpolateVariables(null, {})).toBe(null);
+  });
+});
+
+describe('ExecutionEngine - Error Handling & Rethrowing', () => {
+  it('writes failed Execution record and rethrows typed IntegrationError with retryable: false', async () => {
+    const mockWorkflow: any = {
+      _id: 'wf_123',
+      userId: 'user_123',
+      name: 'Test Workflow',
+      trigger: { app: 'webhook', event: 'incoming', parameters: {} },
+      action: { app: 'slack', action: 'send_message', parameters: {} },
+      conditions: [],
+    };
+
+    const integrationErr = new IntegrationError('slack', 'AUTH_FAILED', 'Invalid token', {
+      retryable: false,
+      statusCode: 401,
+    });
+
+    vi.spyOn(ExecutionEngine, 'executeActionMock').mockRejectedValueOnce(integrationErr);
+    const createSpy = vi.spyOn(Execution, 'create').mockResolvedValueOnce({
+      _id: 'exec_failed_1',
+      status: 'failed',
+    } as any);
+    const updateSpy = vi.spyOn(Workflow, 'findByIdAndUpdate').mockResolvedValueOnce({} as any);
+
+    let thrownError: any;
+    try {
+      await ExecutionEngine.executeWorkflow(mockWorkflow, 'user_123');
+    } catch (err) {
+      thrownError = err;
+    }
+
+    // Must rethrow original IntegrationError with retryable: false preserved
+    expect(thrownError).toBe(integrationErr);
+    expect(thrownError).toBeInstanceOf(IntegrationError);
+    expect(thrownError.retryable).toBe(false);
+    expect(thrownError.statusCode).toBe(401);
+
+    // Must still write failed Execution record and update workflow metrics
+    expect(createSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        workflowId: 'wf_123',
+        status: 'failed',
+        error: 'Invalid token',
+      })
+    );
+    expect(updateSpy).toHaveBeenCalledWith(
+      'wf_123',
+      expect.objectContaining({
+        $inc: { executionCount: 1 },
+      })
+    );
+  });
+
+  it('rethrows retryable IntegrationError (retryable: true) for transient errors', async () => {
+    const mockWorkflow: any = {
+      _id: 'wf_456',
+      userId: 'user_456',
+      name: 'Test Retryable',
+      trigger: { app: 'webhook', event: 'incoming', parameters: {} },
+      action: { app: 'discord', action: 'send_message', parameters: {} },
+      conditions: [],
+    };
+
+    const retryableErr = new IntegrationError('discord', 'RATE_LIMITED', 'Rate limit exceeded', {
+      retryable: true,
+      statusCode: 429,
+      retryAfterMs: 5000,
+    });
+
+    vi.spyOn(ExecutionEngine, 'executeActionMock').mockRejectedValueOnce(retryableErr);
+    vi.spyOn(Execution, 'create').mockResolvedValueOnce({
+      _id: 'exec_failed_2',
+      status: 'failed',
+    } as any);
+    vi.spyOn(Workflow, 'findByIdAndUpdate').mockResolvedValueOnce({} as any);
+
+    let thrownError: any;
+    try {
+      await ExecutionEngine.executeWorkflow(mockWorkflow, 'user_456');
+    } catch (err) {
+      thrownError = err;
+    }
+
+    expect(thrownError).toBe(retryableErr);
+    expect(thrownError.retryable).toBe(true);
+    expect(thrownError.statusCode).toBe(429);
   });
 });
