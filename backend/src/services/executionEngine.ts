@@ -27,8 +27,8 @@ export class ExecutionEngine {
           from: parameters?.emailAddress || 'notifications@service.com',
           sender: 'Alex Morgan <alex.morgan@company.com>',
           to: parameters?.recipient || 'user@worksync.io',
-          subject: parameters?.subjectFilter 
-            ? `${parameters.subjectFilter} - Weekly Update` 
+          subject: parameters?.subjectFilter
+            ? `${parameters.subjectFilter} - Weekly Update`
             : 'Quarterly Project Milestone Completed',
           snippet: 'Hey team, here is the updated project status for this week. Everything is on track.',
           body: 'Hello,\n\nAll critical milestones for Sprint 24 have been accomplished. Let us know if you need any adjustments.\n\nBest,\nAlex',
@@ -297,7 +297,7 @@ export class ExecutionEngine {
 
     // Step 1: Trigger step
     const triggerData = this.generateSimulatedTriggerData(workflow, options.customTriggerData);
-    
+
     // Provide user-friendly trigger title per requirement:
     // e.g. "New email received" for Gmail -> New Email
     let triggerTitle = 'Trigger event detected';
@@ -378,7 +378,7 @@ export class ExecutionEngine {
 
     try {
       actionResult = await this.executeActionMock(workflow, interpolatedParams, triggerData);
-      
+
       // Prompt specifically requested:
       // Gmail -> Slack: "New email received" then "Slack notification sent successfully"
       logs.push({

@@ -5,8 +5,8 @@ echo        WorkSync - Automation Platform Launcher
 echo ========================================================
 echo.
 
-:: Ensure Node.js and MongoDB are in PATH for this session
-set "PATH=C:\Users\DELL\AppData\Local\Programs\nodejs;C:\Program Files\MongoDB\Server\8.3\bin;%PATH%"
+:: Ensure Node.js is in PATH for this session
+set "PATH=C:\Program Files\nodejs;%PATH%"
 
 :: Check Node.js
 where node >nul 2>nul

@@ -271,8 +271,8 @@ export const duplicateWorkflow = async (req: AuthRequest, res: Response, next: N
       description: original.description,
       trigger: {
         ...original.trigger,
-        webhookId: original.trigger.app === 'webhook' 
-          ? 'wh_' + Math.random().toString(36).substring(2, 14) 
+        webhookId: original.trigger.app === 'webhook'
+          ? 'wh_' + Math.random().toString(36).substring(2, 14)
           : undefined,
       },
       action: original.action,
@@ -366,8 +366,8 @@ export const handleIncomingWebhook = async (req: Request, res: Response, next: N
 
     const workflows = provided
       ? candidates.filter(
-          (wf) => !!wf.webhookSecret && safeEqual(provided.toLowerCase(), hmacSha256Hex(wf.webhookSecret, rawBody))
-        )
+        (wf) => !!wf.webhookSecret && safeEqual(provided.toLowerCase(), hmacSha256Hex(wf.webhookSecret, rawBody))
+      )
       : [];
 
     if (workflows.length === 0) {
