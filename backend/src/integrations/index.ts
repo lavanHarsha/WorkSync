@@ -7,6 +7,7 @@ import { sendGmail } from './gmail';
 import { appendSheetRow } from './googleSheets';
 import { createGithubIssue } from './github';
 import { createNotionPage } from './notion';
+import { normalizeActionId } from './actionId';
 
 export * from './errors';
 
@@ -41,7 +42,7 @@ export const executeIntegrationAction = async (
   userId: string,
   params: Record<string, any>
 ): Promise<IntegrationResult> => {
-  const handler = HANDLERS[app]?.[action];
+  const handler = HANDLERS[app]?.[normalizeActionId(action)];
   if (!handler) {
     throw invalidConfig(app, `Action "${action}" is not supported for ${app}`);
   }

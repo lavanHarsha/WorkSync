@@ -3,6 +3,7 @@ import { Workflow } from '../models/Workflow';
 import { Execution } from '../models/Execution';
 import { AuthRequest } from '../middleware/auth';
 import { enqueueWorkflowExecution, scheduleRepeatableJob, removeScheduledJob } from '../queues/executionQueue';
+import { ExecutionEngine } from '../services/executionEngine';
 import { scheduleFrequencyToCron } from '../services/schedulerHelper';
 import { hmacSha256Hex, safeEqual } from '../utils/crypto';
 
@@ -121,10 +122,13 @@ export const createWorkflow = async (req: AuthRequest, res: Response, next: Next
       await scheduleRepeatableJob(workflow._id.toString(), userId as string, cronPattern);
     }
 
+    // Select webhookSecret so creator gets immediate access to the token/secret
+    const created = await Workflow.findById(workflow._id).select('+webhookSecret');
+
     res.status(201).json({
       success: true,
       message: 'Workflow created successfully',
-      workflow,
+      workflow: created || workflow,
     });
   } catch (error) {
     next(error);
@@ -152,7 +156,15 @@ export const updateWorkflow = async (req: AuthRequest, res: Response, next: Next
       if (trigger.app === 'webhook' && !trigger.webhookId && !workflow.trigger.webhookId) {
         trigger.webhookId = 'wh_' + Math.random().toString(36).substring(2, 14);
       }
+      const triggerChanged =
+        workflow.trigger.app !== trigger.app ||
+        workflow.trigger.event !== trigger.event ||
+        JSON.stringify(workflow.trigger.parameters || {}) !== JSON.stringify(trigger.parameters || {});
       workflow.trigger = trigger;
+      if (triggerChanged) {
+        workflow.triggerState = {}; // new trigger config => start watching from now, no backfill
+        workflow.markModified('triggerState');
+      }
     }
     if (action) workflow.action = action;
     if (conditions !== undefined) workflow.conditions = conditions;
@@ -230,6 +242,11 @@ export const toggleWorkflow = async (req: AuthRequest, res: Response, next: Next
     }
 
     workflow.enabled = !workflow.enabled;
+    if (workflow.enabled) {
+      // Don't replay everything that happened while paused
+      workflow.triggerState = {};
+      workflow.markModified('triggerState');
+    }
     await workflow.save();
 
     // Handle schedule trigger toggle
@@ -303,19 +320,20 @@ export const testWorkflow = async (req: AuthRequest, res: Response, next: NextFu
 
     const customTriggerData = req.body?.triggerData;
 
-    // Enqueue the execution instead of running synchronously
-    const { jobId, executionId } = await enqueueWorkflowExecution({
-      workflowId: workflow._id.toString(),
-      userId,
-      customTriggerData,
-    });
+    // Test runs execute inline so the caller gets the full step-by-step result immediately.
+    // The engine persists an Execution record for both success and failure.
+    let execution;
+    try {
+      execution = await ExecutionEngine.executeWorkflow(workflow, userId, { customTriggerData });
+    } catch {
+      execution = await Execution.findOne({ workflowId: workflow._id, userId }).sort({ createdAt: -1 });
+      if (!execution) throw new Error('Workflow execution failed before it could be recorded');
+    }
 
-    res.status(202).json({
+    res.status(200).json({
       success: true,
-      message: 'Workflow execution queued',
-      jobId,
-      executionId,
-      statusUrl: `/api/executions/${executionId}/status`,
+      message: execution.status === 'success' ? 'Workflow test completed' : 'Workflow test finished with errors',
+      execution,
     });
   } catch (error) {
     next(error);
@@ -360,20 +378,27 @@ export const handleIncomingWebhook = async (req: Request, res: Response, next: N
     }
 
     // Verify HMAC-SHA256 of the raw request body against each workflow's secret
+    // OR allow direct secret token via X-WorkSync-Secret header or ?secret= query param
     const header = req.headers[SIGNATURE_HEADER];
-    const provided = (Array.isArray(header) ? header[0] : header)?.replace(/^sha256=/i, '').trim();
+    const providedSig = (Array.isArray(header) ? header[0] : header)?.replace(/^sha256=/i, '').trim();
+    const providedSecret = (req.headers['x-worksync-secret'] || req.query.secret) as string | undefined;
     const rawBody: Buffer | string = (req as any).rawBody ?? '';
 
-    const workflows = provided
-      ? candidates.filter(
-        (wf) => !!wf.webhookSecret && safeEqual(provided.toLowerCase(), hmacSha256Hex(wf.webhookSecret, rawBody))
-      )
-      : [];
+    const workflows = candidates.filter((wf) => {
+      if (!wf.webhookSecret) return false;
+      if (providedSig && safeEqual(providedSig.toLowerCase(), hmacSha256Hex(wf.webhookSecret, rawBody))) {
+        return true;
+      }
+      if (providedSecret && safeEqual(providedSecret.trim(), wf.webhookSecret.trim())) {
+        return true;
+      }
+      return false;
+    });
 
     if (workflows.length === 0) {
       res.status(401).json({
         success: false,
-        message: 'Missing or invalid X-WorkSync-Signature',
+        message: 'Missing or invalid webhook authorization. Provide a valid X-WorkSync-Signature or X-WorkSync-Secret header.',
       });
       return;
     }
@@ -394,8 +419,6 @@ export const handleIncomingWebhook = async (req: Request, res: Response, next: N
       message: `Queued ${results.length} workflow execution(s)`,
       jobs: results.map(j => ({
         jobId: j.jobId,
-        executionId: j.executionId,
-        statusUrl: `/api/executions/${j.executionId}/status`,
       })),
     });
   } catch (error) {

@@ -2,10 +2,10 @@ import rateLimit from 'express-rate-limit';
 
 const handler = (message: string) => ({ success: false, message });
 
-// 5 requests / 15 min per IP for login and register
+// 20 requests / 15 min per IP for login and register
 export const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  limit: 5,
+  limit: 20,
   standardHeaders: 'draft-7',
   legacyHeaders: false,
   message: handler('Too many attempts. Please try again in 15 minutes.'),

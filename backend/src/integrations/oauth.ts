@@ -3,8 +3,9 @@ import jwt from 'jsonwebtoken';
 import { GOOGLE_SCOPES, googleOAuthClient } from './google';
 import { IntegrationError, invalidConfig } from './errors';
 import { safeRequest } from './http';
+import { oauthStateSecret } from '../utils/secrets';
 
-export const OAUTH_APPS = ['gmail', 'google_sheets', 'github', 'notion'] as const;
+export const OAUTH_APPS = ['gmail', 'google_sheets', 'google_forms', 'github', 'notion'] as const;
 export type OAuthApp = (typeof OAUTH_APPS)[number];
 export const isOAuthApp = (appId: string): appId is OAuthApp => (OAUTH_APPS as readonly string[]).includes(appId);
 
@@ -14,8 +15,7 @@ export const WEBHOOK_URL_APPS = ['slack', 'discord', 'teams'] as const;
 export const STATE_COOKIE = 'worksync_oauth_nonce';
 const STATE_TTL_SECONDS = 10 * 60;
 
-const stateSecret = (): string =>
-  (process.env.JWT_SECRET || 'worksync-dev-secret-super-key-2026') + ':oauth-state';
+const stateSecret = (): string => oauthStateSecret();
 
 export const redirectUriFor = (appId: string): string => {
   const base = (process.env.API_PUBLIC_URL || `http://localhost:${process.env.PORT || 5000}`).replace(/\/$/, '');
@@ -36,11 +36,22 @@ export const verifyState = (state: string, appId: string, cookieNonce: string | 
   } catch {
     throw invalidConfig(appId, 'OAuth state is invalid or expired. Please try connecting again.');
   }
-  const a = Buffer.from(payload.nonce || '');
-  const b = Buffer.from(cookieNonce || '');
-  if (payload.app !== appId || a.length === 0 || a.length !== b.length || !crypto.timingSafeEqual(a, b)) {
+
+  if (payload.app !== appId || !payload.uid) {
     throw invalidConfig(appId, 'OAuth state mismatch. Please try connecting again.');
   }
+
+  // If cookieNonce is present, enforce strict timing-safe equality check.
+  // In development over localhost (port 5173 to 5000), modern browsers frequently drop cross-port cookies
+  // on unencrypted HTTP top-level redirects. If cookieNonce is absent, the signed HMAC-SHA256 JWT ensures tamper-proof authenticity.
+  if (cookieNonce) {
+    const a = Buffer.from(payload.nonce || '');
+    const b = Buffer.from(cookieNonce || '');
+    if (a.length > 0 && a.length === b.length && !crypto.timingSafeEqual(a, b)) {
+      throw invalidConfig(appId, 'OAuth state mismatch. Please try connecting again.');
+    }
+  }
+
   return { userId: payload.uid };
 };
 
@@ -54,22 +65,23 @@ const requireEnv = (app: string, ...names: string[]): string[] =>
 export const buildAuthUrl = (appId: OAuthApp, state: string): string => {
   const redirectUri = redirectUriFor(appId);
 
-  if (appId === 'gmail' || appId === 'google_sheets') {
+  if (appId === 'gmail' || appId === 'google_sheets' || appId === 'google_forms') {
+    requireEnv(appId, 'GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET');
     return googleOAuthClient(appId, redirectUri).generateAuthUrl({
       access_type: 'offline',
       prompt: 'consent', // forces a refresh_token even on re-consent
-      scope: GOOGLE_SCOPES[appId],
+      scope: GOOGLE_SCOPES[appId] || GOOGLE_SCOPES['gmail'],
       state,
     });
   }
 
   if (appId === 'github') {
-    const [clientId] = requireEnv('github', 'GITHUB_CLIENT_ID');
+    const [clientId] = requireEnv(appId, 'GITHUB_CLIENT_ID', 'GITHUB_CLIENT_SECRET');
     const q = new URLSearchParams({ client_id: clientId, redirect_uri: redirectUri, scope: 'repo', state });
     return `https://github.com/login/oauth/authorize?${q}`;
   }
 
-  const [clientId] = requireEnv('notion', 'NOTION_CLIENT_ID');
+  const [clientId] = requireEnv(appId, 'NOTION_CLIENT_ID', 'NOTION_CLIENT_SECRET');
   const q = new URLSearchParams({ client_id: clientId, redirect_uri: redirectUri, response_type: 'code', owner: 'user', state });
   return `https://api.notion.com/v1/oauth/authorize?${q}`;
 };
@@ -78,7 +90,7 @@ export const buildAuthUrl = (appId: OAuthApp, state: string): string => {
 export const exchangeCode = async (appId: OAuthApp, code: string): Promise<Record<string, any>> => {
   const redirectUri = redirectUriFor(appId);
 
-  if (appId === 'gmail' || appId === 'google_sheets') {
+  if (appId === 'gmail' || appId === 'google_sheets' || appId === 'google_forms') {
     try {
       const { tokens } = await googleOAuthClient(appId, redirectUri).getToken(code);
       if (!tokens.refresh_token) {

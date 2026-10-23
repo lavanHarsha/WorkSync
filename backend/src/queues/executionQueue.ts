@@ -1,9 +1,28 @@
 import { Queue } from 'bullmq';
 import Redis from 'ioredis';
+import logger from '../utils/logger';
 
-const redisConnection = new Redis(process.env.REDIS_URL || 'redis://localhost:6379', {
-  maxRetriesPerRequest: null,
-});
+/** Creates a BullMQ-compatible Redis connection whose errors are logged once instead of spamming stderr. */
+export const createRedisConnection = (label: string): Redis => {
+  const conn = new Redis(process.env.REDIS_URL || 'redis://127.0.0.1:6379', {
+    maxRetriesPerRequest: null,
+    retryStrategy: (times) => Math.min(times * 1000, 15000),
+  });
+  let lastLogged = 0;
+  conn.on('error', (err: Error) => {
+    const now = Date.now();
+    if (now - lastLogged > 30_000) {
+      lastLogged = now;
+      logger.error({ redis: label, error: err.message || String((err as any).code) }, 'Redis connection error');
+    }
+  });
+  conn.on('ready', () => logger.info({ redis: label }, 'Redis connection ready'));
+  return conn;
+};
+
+const redisConnection = createRedisConnection('queue');
+
+export const getRedis = (): Redis => redisConnection;
 
 export interface ExecutionJobData {
   workflowId: string;
@@ -61,7 +80,7 @@ export const scheduleRepeatableJob = async (
 
   await executionQueue.upsertJobScheduler(
     jobId,
-    { pattern: cronPattern },
+    { pattern: cronPattern, tz: 'UTC' },
     {
       name: 'execute-workflow',
       data: {
@@ -81,6 +100,22 @@ export const scheduleRepeatableJob = async (
 export const removeScheduledJob = async (workflowId: string) => {
   const jobId = `schedule:${workflowId}`;
   await executionQueue.removeJobScheduler(jobId);
+};
+
+/** How often external-app triggers (Gmail, Sheets, Forms, GitHub, Notion) are polled. */
+export const TRIGGER_POLL_INTERVAL_MS = Number(process.env.TRIGGER_POLL_INTERVAL_MS) || 60_000;
+
+/** Registers the single recurring job that drives every polling trigger. Safe to call on every boot. */
+export const registerTriggerPoller = async () => {
+  await executionQueue.upsertJobScheduler(
+    'trigger-poller',
+    { every: TRIGGER_POLL_INTERVAL_MS },
+    {
+      name: 'poll-triggers',
+      data: { workflowId: '', userId: '' },
+      opts: { attempts: 1, removeOnComplete: true, removeOnFail: 50 },
+    }
+  );
 };
 
 /**

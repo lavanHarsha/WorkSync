@@ -11,6 +11,8 @@ export interface IWorkflow extends Document {
   conditions?: IConditionConfig[];
   /** HMAC secret for X-WorkSync-Signature. Excluded from queries unless selected explicitly. */
   webhookSecret?: string;
+  /** Polling cursor + last poll status for triggers that watch an external app. */
+  triggerState?: Record<string, any>;
   enabled: boolean;
   lastExecutedAt?: Date;
   executionCount: number;
@@ -78,6 +80,10 @@ const workflowSchema = new Schema<IWorkflow>(
       type: String,
       select: false,
     },
+    triggerState: {
+      type: Schema.Types.Mixed,
+      default: {},
+    },
     enabled: {
       type: Boolean,
       default: true,
@@ -94,6 +100,8 @@ const workflowSchema = new Schema<IWorkflow>(
     timestamps: true,
   }
 );
+
+workflowSchema.index({ enabled: 1, 'trigger.app': 1 });
 
 // Generate an HMAC secret for any workflow with a webhook trigger
 workflowSchema.pre('save', function (next) {

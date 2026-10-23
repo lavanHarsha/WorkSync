@@ -296,7 +296,9 @@ export class ExecutionEngine {
     const logs: IExecutionStepLog[] = [];
 
     // Step 1: Trigger step
-    const triggerData = this.generateSimulatedTriggerData(workflow, options.customTriggerData);
+    const triggerData = options.isLiveWebhook
+      ? options.customTriggerData || {}
+      : this.generateSimulatedTriggerData(workflow, options.customTriggerData);
 
     // Provide user-friendly trigger title per requirement:
     // e.g. "New email received" for Gmail -> New Email

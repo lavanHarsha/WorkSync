@@ -1,14 +1,13 @@
 import { Worker, Job, UnrecoverableError } from 'bullmq';
-import Redis from 'ioredis';
-import { ExecutionJobData } from '../queues/executionQueue';
+import { ExecutionJobData, createRedisConnection } from '../queues/executionQueue';
 import { ExecutionEngine } from '../services/executionEngine';
 import { Workflow } from '../models/Workflow';
 import { Execution } from '../models/Execution';
 import { IntegrationError } from '../integrations/errors';
+import { runTriggerPoll } from '../services/triggerPoller';
+import logger from '../utils/logger';
 
-const redisConnection = new Redis(process.env.REDIS_URL || 'redis://localhost:6379', {
-  maxRetriesPerRequest: null,
-});
+const redisConnection = createRedisConnection('worker');
 
 /**
  * Worker that processes workflow execution jobs
@@ -16,6 +15,13 @@ const redisConnection = new Redis(process.env.REDIS_URL || 'redis://localhost:63
 export const executionWorker = new Worker<ExecutionJobData>(
   'workflow-execution',
   async (job: Job<ExecutionJobData>) => {
+    // Recurring sweep that watches Gmail/Sheets/Forms/GitHub/Notion for new items
+    if (job.name === 'poll-triggers') {
+      const result = await runTriggerPoll();
+      if (result.polled > 0) logger.info(result, 'Trigger poll sweep finished');
+      return result;
+    }
+
     const { workflowId, userId, customTriggerData, isLiveWebhook, isScheduled } = job.data;
 
     console.log(`[Worker] Processing job ${job.id} for workflow ${workflowId}`);
@@ -156,8 +162,13 @@ executionWorker.on('failed', (job: Job | undefined, err: Error) => {
   console.error(`[Worker] Job ${job?.id} has failed with error:`, err.message);
 });
 
+let lastWorkerErrorLog = 0;
 executionWorker.on('error', (err: Error) => {
-  console.error('[Worker] Worker error:', err);
+  const now = Date.now();
+  if (now - lastWorkerErrorLog > 30_000) {
+    lastWorkerErrorLog = now;
+    logger.warn({ error: err.message }, '[Worker] Worker connection error (retrying)');
+  }
 });
 
 export default executionWorker;

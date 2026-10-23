@@ -63,6 +63,7 @@ export interface IWorkflow {
   trigger: ITriggerConfig;
   action: IActionConfig;
   conditions?: IConditionConfig[];
+  webhookSecret?: string;
   enabled: boolean;
   lastExecutedAt?: string;
   executionCount: number;

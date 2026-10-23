@@ -6,13 +6,14 @@ import { User, IUser } from '../models/User';
 import { AuthRequest } from '../middleware/auth';
 import { SeedService } from '../services/seedService';
 import { sha256, safeEqual } from '../utils/crypto';
+import { jwtSecret, refreshSecret as refreshSecretKey } from '../utils/secrets';
 
 const ACCESS_TOKEN_TTL = '15m';
 const REFRESH_TOKEN_TTL_SECONDS = 7 * 24 * 60 * 60;
 const REFRESH_COOKIE = 'worksync_refresh';
 
-const accessSecret = (): string => process.env.JWT_SECRET || 'worksync-dev-secret-super-key-2026';
-const refreshSecret = (): string => process.env.JWT_REFRESH_SECRET || accessSecret() + ':refresh';
+const accessSecret = (): string => jwtSecret();
+const refreshSecret = (): string => refreshSecretKey();
 
 const generateToken = (user: IUser): string => {
   return jwt.sign(
@@ -153,6 +154,10 @@ export const login = async (req: Request, res: Response, next: NextFunction): Pr
 
 export const demoLogin = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
+    if (process.env.ENABLE_DEMO_MODE !== 'true') {
+      res.status(404).json({ success: false, message: 'Not found' });
+      return;
+    }
     const demoEmail = 'demo@worksync.io';
     let user = await User.findOne({ email: demoEmail });
 

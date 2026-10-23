@@ -16,6 +16,10 @@ const toCell = (v: any): string | number | boolean =>
   v === null || v === undefined ? '' : typeof v === 'object' ? JSON.stringify(v) : v;
 
 const resolveRow = (params: SheetsParams): any[] => {
+  // "columns": one cell per line (the builder UI uses this; values are already interpolated)
+  if (typeof (params as any).columns === 'string' && (params as any).columns.trim()) {
+    return (params as any).columns.split(/\r?\n/).map((c: string) => c.trim());
+  }
   let source: any = params.values ?? params.row;
   if (typeof source === 'string') {
     try {

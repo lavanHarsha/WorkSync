@@ -14,6 +14,8 @@ import {
   Loader2,
   Plug,
   Sparkles,
+  AlertCircle,
+  X,
 } from 'lucide-react';
 
 export const AppsPage: React.FC = () => {
@@ -28,8 +30,9 @@ export const AppsPage: React.FC = () => {
   const [isConnecting, setIsConnecting] = useState(false);
   const [connectionSuccess, setConnectionSuccess] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+  const [bannerNotice, setBannerNotice] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
-  const isOAuthApp = (appId: string) => ['gmail', 'google_sheets', 'github', 'notion'].includes(appId);
+  const isOAuthApp = (appId: string) => ['gmail', 'google_sheets', 'google_forms', 'github', 'notion'].includes(appId);
   const isWebhookApp = (appId: string) => ['slack', 'discord', 'teams'].includes(appId);
 
   const fetchApps = async () => {
@@ -49,7 +52,24 @@ export const AppsPage: React.FC = () => {
   useEffect(() => {
     fetchApps();
     const params = new URLSearchParams(window.location.search);
-    if (params.get('connected') === 'true') {
+    const connected = params.get('connected');
+    const error = params.get('error');
+    const app = params.get('app');
+
+    if (connected === 'true') {
+      const appName = app ? app.replace('_', ' ').replace(/\b\w/g, (c) => c.toUpperCase()) : 'Application';
+      setBannerNotice({
+        type: 'success',
+        message: `Successfully authenticated and connected ${appName}!`,
+      });
+      window.history.replaceState({}, '', window.location.pathname);
+    } else if (error) {
+      setBannerNotice({
+        type: 'error',
+        message: error === 'access_denied'
+          ? 'Authorization was cancelled. Permissions were not granted.'
+          : `Authorization failed: ${error}`,
+      });
       window.history.replaceState({}, '', window.location.pathname);
     }
   }, []);
@@ -148,6 +168,31 @@ export const AppsPage: React.FC = () => {
           Connect your favorite apps and cloud services to automate workflows with WorkSync
         </p>
       </div>
+
+      {bannerNotice && (
+        <div
+          className={`p-4 rounded-2xl flex items-center justify-between border text-xs shadow-xs transition-all ${
+            bannerNotice.type === 'success'
+              ? 'bg-emerald-50 border-emerald-200/80 text-emerald-800'
+              : 'bg-rose-50 border-rose-200/80 text-rose-800'
+          }`}
+        >
+          <div className="flex items-center gap-2.5">
+            {bannerNotice.type === 'success' ? (
+              <CheckCircle2 size={16} className="text-emerald-600 shrink-0" />
+            ) : (
+              <AlertCircle size={16} className="text-rose-600 shrink-0" />
+            )}
+            <span className="font-semibold">{bannerNotice.message}</span>
+          </div>
+          <button
+            onClick={() => setBannerNotice(null)}
+            className="p-1 rounded-lg hover:bg-black/5 text-slate-500 hover:text-slate-800 transition-colors"
+          >
+            <X size={14} />
+          </button>
+        </div>
+      )}
 
       {/* Filter and Search Bar */}
       <div className="flex flex-col md:flex-row items-center justify-between gap-4 bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs">

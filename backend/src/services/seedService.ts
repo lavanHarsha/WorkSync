@@ -5,6 +5,8 @@ import { Integration } from '../models/Integration';
 
 export class SeedService {
   public static async seedUserData(userId: string | mongoose.Types.ObjectId): Promise<void> {
+    // Real accounts must never receive fake workflows, fake history or fake "connected" apps.
+    if (process.env.ENABLE_DEMO_MODE !== 'true') return;
     const existingWorkflows = await Workflow.find({ userId });
     if (existingWorkflows.length > 0) {
       return; // Already seeded

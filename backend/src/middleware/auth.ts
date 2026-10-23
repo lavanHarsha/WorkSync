@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
+import { jwtSecret } from '../utils/secrets';
 
 export interface AuthRequest extends Request {
   user?: {
@@ -18,7 +19,7 @@ export const authenticate = (req: AuthRequest, res: Response, next: NextFunction
     }
 
     const token = authHeader.split(' ')[1];
-    const secret = process.env.JWT_SECRET || 'worksync-dev-secret-super-key-2026';
+    const secret = jwtSecret();
 
     const decoded = jwt.verify(token, secret) as { id: string; email: string; name: string };
     req.user = decoded;

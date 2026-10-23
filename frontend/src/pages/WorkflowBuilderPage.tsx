@@ -23,6 +23,9 @@ import {
   Loader2,
   AlertCircle,
   ExternalLink,
+  Key,
+  Terminal,
+  Shield,
 } from 'lucide-react';
 
 export const WorkflowBuilderPage: React.FC = () => {
@@ -50,6 +53,9 @@ export const WorkflowBuilderPage: React.FC = () => {
   });
   const [webhookUrl, setWebhookUrl] = useState('');
   const [copiedWebhook, setCopiedWebhook] = useState(false);
+  const [webhookSecret, setWebhookSecret] = useState('');
+  const [copiedSecret, setCopiedSecret] = useState(false);
+  const [copiedCurl, setCopiedCurl] = useState(false);
 
   // Optional Conditions State
   const [conditions, setConditions] = useState<
@@ -96,6 +102,9 @@ export const WorkflowBuilderPage: React.FC = () => {
 
         if (wf.trigger.webhookId) {
           setWebhookUrl(`${window.location.origin}/api/workflows/webhook/${wf.trigger.webhookId}`);
+        }
+        if (wf.webhookSecret) {
+          setWebhookSecret(wf.webhookSecret);
         }
 
         setSelectedActionApp(wf.action.app);
@@ -316,6 +325,24 @@ export const WorkflowBuilderPage: React.FC = () => {
     }
   };
 
+  const handleCopySecret = () => {
+    if (webhookSecret) {
+      navigator.clipboard.writeText(webhookSecret);
+      setCopiedSecret(true);
+      setTimeout(() => setCopiedSecret(false), 2000);
+    }
+  };
+
+  const handleCopyCurl = () => {
+    const curlCmd = `curl -X POST "${webhookUrl}" \\
+  -H "Content-Type: application/json" \\
+  -H "X-WorkSync-Secret: ${webhookSecret || 'whsec_your_secret_here'}" \\
+  -d '{"event": "lead.created", "email": "user@example.com"}'`;
+    navigator.clipboard.writeText(curlCmd);
+    setCopiedCurl(true);
+    setTimeout(() => setCopiedCurl(false), 2000);
+  };
+
   // Condition Helpers
   const addCondition = () => {
     setConditions([
@@ -373,6 +400,9 @@ export const WorkflowBuilderPage: React.FC = () => {
 
       if (result.success && result.workflow) {
         setSavedWorkflow(result.workflow);
+        if (result.workflow.webhookSecret) {
+          setWebhookSecret(result.workflow.webhookSecret);
+        }
         setSaveSuccess(true);
         setTimeout(() => setSaveSuccess(false), 3000);
       }
@@ -866,8 +896,59 @@ export const WorkflowBuilderPage: React.FC = () => {
                     </button>
                   </div>
                   <p className="text-[11px] text-slate-400 mt-1">
-                    Send HTTP POST requests with JSON body to this endpoint to execute this workflow in real time!
+                    Send HTTP POST requests with JSON body to this endpoint to execute this workflow in real time.
                   </p>
+                </div>
+
+                <div>
+                  <label className="flex items-center gap-1.5 text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
+                    <Key size={13} className="text-brand-600" />
+                    <span>Webhook Authentication Secret</span>
+                  </label>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      readOnly
+                      value={webhookSecret || (isEditing ? 'No secret generated' : 'Generated automatically on save')}
+                      placeholder="Secret generated upon saving workflow"
+                      className="w-full px-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-xs font-mono text-slate-800"
+                    />
+                    <button
+                      type="button"
+                      disabled={!webhookSecret}
+                      onClick={handleCopySecret}
+                      className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-slate-900 text-white text-xs font-semibold hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
+                    >
+                      {copiedSecret ? <Check size={14} /> : <Copy size={14} />}
+                      <span>{copiedSecret ? 'Copied' : 'Copy'}</span>
+                    </button>
+                  </div>
+                  <p className="text-[11px] text-slate-400 mt-1">
+                    Secure your endpoint by passing this secret in the <code className="text-slate-600 bg-slate-100 px-1 py-0.5 rounded">X-WorkSync-Secret</code> header, via HMAC-SHA256 signature in <code className="text-slate-600 bg-slate-100 px-1 py-0.5 rounded">X-WorkSync-Signature</code>, or as <code className="text-slate-600 bg-slate-100 px-1 py-0.5 rounded">?secret=</code> query parameter.
+                  </p>
+                </div>
+
+                <div className="rounded-xl border border-slate-200 bg-slate-900 text-slate-200 p-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <Terminal size={14} className="text-brand-400" />
+                      <span className="text-xs font-semibold tracking-wide text-slate-300">Quick Test cURL Command</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleCopyCurl}
+                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-800 text-slate-300 hover:text-white hover:bg-slate-700 text-[11px] font-medium transition-colors"
+                    >
+                      {copiedCurl ? <Check size={12} className="text-emerald-400" /> : <Copy size={12} />}
+                      <span>{copiedCurl ? 'Copied' : 'Copy cURL'}</span>
+                    </button>
+                  </div>
+                  <pre className="text-[11px] font-mono overflow-x-auto whitespace-pre p-2 bg-slate-950/60 rounded-lg text-emerald-400">
+{`curl -X POST "${webhookUrl}" \\
+  -H "Content-Type: application/json" \\
+  -H "X-WorkSync-Secret: ${webhookSecret || 'whsec_your_secret_here'}" \\
+  -d '{"event": "lead.created", "email": "user@example.com"}'`}
+                  </pre>
                 </div>
               </div>
             )}

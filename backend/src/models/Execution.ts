@@ -82,6 +82,9 @@ const executionSchema = new Schema<IExecution>(
   }
 );
 
+executionSchema.index({ userId: 1, createdAt: -1 });
+executionSchema.index({ workflowId: 1, createdAt: -1 });
+
 executionSchema.virtual('id').get(function () {
   return this._id.toHexString();
 });

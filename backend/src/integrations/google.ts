@@ -2,8 +2,9 @@ import { google } from 'googleapis';
 import { invalidConfig } from './errors';
 
 export const GOOGLE_SCOPES: Record<string, string[]> = {
-  gmail: ['https://www.googleapis.com/auth/gmail.send'],
+  gmail: ['https://www.googleapis.com/auth/gmail.send', 'https://www.googleapis.com/auth/gmail.readonly'],
   google_sheets: ['https://www.googleapis.com/auth/spreadsheets'],
+  google_forms: ['https://www.googleapis.com/auth/forms.responses.readonly', 'https://www.googleapis.com/auth/forms.body.readonly'],
 };
 
 export const googleOAuthClient = (app: string, redirectUri?: string) => {

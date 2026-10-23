@@ -30,7 +30,6 @@ export const APP_CATALOG = [
     ],
     actions: [
       { id: 'send_email', name: 'Send Email', description: 'Sends an email to specified recipients' },
-      { id: 'create_draft', name: 'Create Draft', description: 'Creates a draft email in your mailbox' },
     ],
   },
   {
@@ -40,13 +39,9 @@ export const APP_CATALOG = [
     icon: 'MessageSquare',
     color: '#4A154B',
     description: 'Post automated notifications to public channels, private groups, or direct messages.',
-    triggers: [
-      { id: 'new_message', name: 'New Channel Message', description: 'Triggers when a new message is posted' },
-      { id: 'new_mention', name: 'New Mention', description: 'Triggers when user is @mentioned' },
-    ],
+    triggers: [],
     actions: [
       { id: 'send_message', name: 'Send Channel Message', description: 'Posts formatted messages to selected channel' },
-      { id: 'send_dm', name: 'Send Direct Message', description: 'Sends a private DM to a team member' },
     ],
   },
   {
@@ -58,11 +53,9 @@ export const APP_CATALOG = [
     description: 'Read rows, insert records, and keep spreadsheets automatically synchronized.',
     triggers: [
       { id: 'new_row', name: 'New Spreadsheet Row', description: 'Triggers when a row is appended to a sheet' },
-      { id: 'updated_row', name: 'Updated Spreadsheet Row', description: 'Triggers when values change in a sheet' },
     ],
     actions: [
       { id: 'add_row', name: 'Add Spreadsheet Row', description: 'Appends data as a new row in a sheet' },
-      { id: 'update_row', name: 'Update Row', description: 'Finds and updates a matching row' },
     ],
   },
   {
@@ -112,9 +105,7 @@ export const APP_CATALOG = [
     icon: 'Headphones',
     color: '#5865F2',
     description: 'Send rich embed alerts, community notifications, and bot messages into Discord channels.',
-    triggers: [
-      { id: 'new_message', name: 'New Channel Message', description: 'Triggers when a message is sent in server' },
-    ],
+    triggers: [],
     actions: [
       { id: 'send_message', name: 'Send Channel Message', description: 'Posts message via Discord Webhook' },
     ],
@@ -162,6 +153,9 @@ export const APP_CATALOG = [
   },
 ];
 
+/** Apps that need no credentials. */
+export const BUILT_IN_APPS = ['webhook', 'schedule'];
+
 export const getApps = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
   try {
     const userId = req.user?.id;
@@ -172,7 +166,8 @@ export const getApps = async (req: AuthRequest, res: Response, next: NextFunctio
 
     const apps = APP_CATALOG.map((app) => ({
       ...app,
-      connected: connectionMap.get(app.id) ?? false,
+      // Built-in apps need no credentials; everything else is connected only via a stored connection
+      connected: BUILT_IN_APPS.includes(app.id) ? true : connectionMap.get(app.id) ?? false,
     }));
 
     res.status(200).json({
@@ -216,6 +211,14 @@ export const connectApp = async (req: AuthRequest, res: Response, next: NextFunc
       return;
     }
 
+    if (!WEBHOOK_HOSTS[appId]) {
+      res.status(400).json({
+        success: false,
+        message: `${catalogApp.name} is built in and needs no connection`,
+      });
+      return;
+    }
+
     let dataToStore = authData;
     if (WEBHOOK_HOSTS[appId]) {
       try {
@@ -236,7 +239,7 @@ export const connectApp = async (req: AuthRequest, res: Response, next: NextFunc
     integration.name = catalogApp.name;
     integration.connected = true;
     integration.connectedAt = new Date();
-    integration.authData = dataToStore || { simulatedAuth: true, connectedVia: 'OAuth 2.0 Mock Layer' };
+    integration.authData = dataToStore;
     integration.markModified('authData');
     await integration.save();
 
