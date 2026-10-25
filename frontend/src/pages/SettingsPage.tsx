@@ -418,7 +418,7 @@ export const SettingsPage: React.FC = () => {
                 cURL Example Trigger
               </label>
               <pre className="p-4 bg-slate-950 text-emerald-400 text-xs rounded-xl overflow-x-auto font-mono">
-{`curl -X POST "${window.location.origin}/api/workflows/webhook/YOUR_WEBHOOK_ID" \\
+{`curl -X POST "${api.getWebhookUrl('YOUR_WEBHOOK_ID')}" \\
   -H "Content-Type: application/json" \\
   -d '{
     "event": "customer.signup",

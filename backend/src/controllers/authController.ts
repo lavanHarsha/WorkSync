@@ -26,7 +26,7 @@ const generateToken = (user: IUser): string => {
 const refreshCookieOptions = (): CookieOptions => ({
   httpOnly: true,
   secure: process.env.NODE_ENV === 'production',
-  sameSite: 'strict',
+  sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
   path: '/api/auth',
 });
 

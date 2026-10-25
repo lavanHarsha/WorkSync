@@ -35,6 +35,13 @@ const allowedOrigins = (process.env.CORS_ORIGINS || '')
   .map((o) => o.trim().replace(/\/$/, ''))
   .filter(Boolean);
 
+if (process.env.FRONTEND_URL) {
+  const feUrl = process.env.FRONTEND_URL.trim().replace(/\/$/, '');
+  if (feUrl && !allowedOrigins.includes(feUrl)) {
+    allowedOrigins.push(feUrl);
+  }
+}
+
 // Middlewares
 app.use(requestLogger);
 app.use(helmet());

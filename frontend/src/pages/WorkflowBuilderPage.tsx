@@ -81,7 +81,7 @@ export const WorkflowBuilderPage: React.FC = () => {
     } else {
       // Default webhook generator id
       const generatedWhId = 'wh_' + Math.random().toString(36).substring(2, 12);
-      setWebhookUrl(`${window.location.origin}/api/workflows/webhook/${generatedWhId}`);
+      setWebhookUrl(api.getWebhookUrl(generatedWhId));
     }
   }, [id]);
 
@@ -101,7 +101,7 @@ export const WorkflowBuilderPage: React.FC = () => {
         setTriggerParams(wf.trigger.parameters || {});
 
         if (wf.trigger.webhookId) {
-          setWebhookUrl(`${window.location.origin}/api/workflows/webhook/${wf.trigger.webhookId}`);
+          setWebhookUrl(api.getWebhookUrl(wf.trigger.webhookId));
         }
         if (wf.webhookSecret) {
           setWebhookSecret(wf.webhookSecret);
@@ -254,7 +254,7 @@ export const WorkflowBuilderPage: React.FC = () => {
     } else if (appId === 'webhook') {
       const whId = 'wh_' + Math.random().toString(36).substring(2, 12);
       setTriggerParams({ eventName: 'checkout.completed', webhookId: whId });
-      setWebhookUrl(`${window.location.origin}/api/workflows/webhook/${whId}`);
+      setWebhookUrl(api.getWebhookUrl(whId));
     } else if (appId === 'schedule') {
       setTriggerParams({ frequency: 'every_hour' });
     }

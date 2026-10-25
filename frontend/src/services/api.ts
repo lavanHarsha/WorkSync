@@ -261,6 +261,11 @@ class ApiService {
       method: 'POST',
     });
   }
+
+  getWebhookUrl(webhookId: string): string {
+    const base = API_BASE.startsWith('http') ? API_BASE : `${window.location.origin}${API_BASE}`;
+    return `${base.replace(/\/+$/, '')}/workflows/webhook/${webhookId}`;
+  }
 }
 
 export const api = new ApiService();

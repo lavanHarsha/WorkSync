@@ -29,8 +29,11 @@ export const assertProductionConfig = (): void => {
   if (refresh && (refresh.length < 32 || PLACEHOLDER.test(refresh))) {
     problems.push('JWT_REFRESH_SECRET must be at least 32 random characters (or unset)');
   }
-  for (const name of ['MONGODB_URI', 'REDIS_URL', 'API_PUBLIC_URL', 'FRONTEND_URL', 'CORS_ORIGINS']) {
+  for (const name of ['MONGODB_URI', 'REDIS_URL', 'API_PUBLIC_URL', 'FRONTEND_URL']) {
     if (!process.env[name]) problems.push(`${name} is required`);
+  }
+  if (!process.env.CORS_ORIGINS && !process.env.FRONTEND_URL) {
+    problems.push('CORS_ORIGINS or FRONTEND_URL is required');
   }
   for (const name of ['API_PUBLIC_URL', 'FRONTEND_URL']) {
     const v = process.env[name];

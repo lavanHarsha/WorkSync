@@ -4,9 +4,12 @@ import logger from '../utils/logger';
 
 /** Creates a BullMQ-compatible Redis connection whose errors are logged once instead of spamming stderr. */
 export const createRedisConnection = (label: string): Redis => {
-  const conn = new Redis(process.env.REDIS_URL || 'redis://127.0.0.1:6379', {
+  const url = process.env.REDIS_URL || 'redis://127.0.0.1:6379';
+  const isTls = url.startsWith('rediss://');
+  const conn = new Redis(url, {
     maxRetriesPerRequest: null,
     retryStrategy: (times) => Math.min(times * 1000, 15000),
+    ...(isTls ? { tls: { rejectUnauthorized: false } } : {}),
   });
   let lastLogged = 0;
   conn.on('error', (err: Error) => {
