@@ -45,30 +45,31 @@ if (process.env.FRONTEND_URL) {
 // Middlewares
 app.use(requestLogger);
 app.use(helmet());
-app.use(
-  cors({
-    origin: (origin, callback) => {
-      // Allow requests with no origin (curl, mobile apps, webhooks) or from Vercel / localhost
-      if (
-        !origin ||
-        allowedOrigins.length === 0 ||
-        allowedOrigins.includes(origin) ||
-        origin.endsWith('.vercel.app') ||
-        origin.includes('localhost') ||
-        origin.includes('127.0.0.1')
-      ) {
-        callback(null, true);
-      } else {
-        // Fallback: reflect the origin so cross-domain communication is never blocked
-        callback(null, true);
-      }
-    },
-    credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-WorkSync-Signature', 'X-Request-Id'],
-    exposedHeaders: ['X-Request-Id'],
-  })
-);
+const corsOptions: cors.CorsOptions = {
+  origin: (origin, callback) => {
+    // Allow requests with no origin (curl, mobile apps, webhooks) or from Vercel / localhost
+    if (
+      !origin ||
+      allowedOrigins.length === 0 ||
+      allowedOrigins.includes(origin) ||
+      origin.endsWith('.vercel.app') ||
+      origin.includes('localhost') ||
+      origin.includes('127.0.0.1')
+    ) {
+      callback(null, true);
+    } else {
+      // Fallback: reflect the origin so cross-domain communication is never blocked
+      callback(null, true);
+    }
+  },
+  credentials: true,
+  methods: ['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-WorkSync-Signature', 'X-Request-Id', 'Accept', 'Origin', 'X-Requested-With'],
+  exposedHeaders: ['X-Request-Id'],
+};
+
+app.use(cors(corsOptions));
+app.options('*', cors(corsOptions));
 app.use(cookieParser());
 app.use(
   express.json({

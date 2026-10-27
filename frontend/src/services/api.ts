@@ -7,7 +7,23 @@ import {
   IAppDefinition,
 } from '../types';
 
-const API_BASE = import.meta.env.VITE_API_URL || '/api';
+const getApiBase = (): string => {
+  const envUrl = import.meta.env.VITE_API_URL;
+  if (envUrl && typeof envUrl === 'string' && envUrl.trim()) {
+    let clean = envUrl.trim().replace(/\/+$/, '');
+    if (clean.startsWith('http') && !clean.endsWith('/api')) {
+      clean += '/api';
+    }
+    return clean;
+  }
+  // In production cloud environments, fallback to the live Render backend
+  if (import.meta.env.PROD) {
+    return 'https://worksync-fobf.onrender.com/api';
+  }
+  return '/api';
+};
+
+const API_BASE = getApiBase();
 
 class ApiService {
   private isRefreshing = false;
@@ -65,10 +81,24 @@ class ApiService {
       }
     }
 
-    const data = await response.json();
+    let data: any;
+    const contentType = response.headers.get('content-type') || '';
+    if (contentType.includes('application/json')) {
+      try {
+        data = await response.json();
+      } catch {
+        data = { message: 'Failed to parse JSON response from server' };
+      }
+    } else {
+      const text = await response.text();
+      if (!response.ok) {
+        throw new Error(text || `Server responded with status ${response.status}`);
+      }
+      data = { success: true, message: text };
+    }
 
     if (!response.ok) {
-      throw new Error(data.message || 'An unexpected error occurred');
+      throw new Error(data.message || data.error || 'An unexpected error occurred');
     }
 
     return data;

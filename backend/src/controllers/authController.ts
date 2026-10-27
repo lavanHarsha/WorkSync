@@ -27,7 +27,7 @@ const refreshCookieOptions = (): CookieOptions => ({
   httpOnly: true,
   secure: process.env.NODE_ENV === 'production',
   sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
-  path: '/api/auth',
+  path: '/',
 });
 
 /** Creates a refresh token (unique via jti) and its storable hash. */
@@ -154,8 +154,8 @@ export const login = async (req: Request, res: Response, next: NextFunction): Pr
 
 export const demoLogin = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    if (process.env.ENABLE_DEMO_MODE !== 'true') {
-      res.status(404).json({ success: false, message: 'Not found' });
+    if (process.env.ENABLE_DEMO_MODE === 'false') {
+      res.status(403).json({ success: false, message: 'Demo mode is disabled on this instance' });
       return;
     }
     const demoEmail = 'demo@worksync.io';
@@ -171,7 +171,7 @@ export const demoLogin = async (req: Request, res: Response, next: NextFunction)
       });
     }
 
-    await SeedService.seedUserData(user._id);
+    await SeedService.seedUserData(user._id, true);
     const token = await startSession(user, res);
 
     res.status(200).json({
