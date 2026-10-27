@@ -1,0 +1,261 @@
+================================================================================
+WORKSYNC PLATFORM - QUALITY ASSURANCE & MANUAL SOFTWARE TESTING SCRIPT
+================================================================================
+Target URL:      https://work-sync-six.vercel.app/
+Backend API:     https://worksync-fobf.onrender.com/api
+Test Scope:      Full-Stack Verification, Workflow Execution, Webhooks & Apps
+Date:            October 2026
+
+================================================================================
+EMPLOYEE INSTRUCTIONS (COPY & PASTE TO YOUR TESTER)
+================================================================================
+"Hi [Employee Name],
+
+Please execute this complete Quality Assurance (QA) and software testing run
+for our WorkSync platform ahead of our executive presentation.
+
+Target URL: https://work-sync-six.vercel.app/
+
+Please follow the 10 testing suites in the checklist below. For each test case,
+verify that expected behavior matches actual behavior, note response times,
+and test both happy paths and edge cases (invalid inputs, password mismatch).
+
+If you encounter any bug or unexpected behavior:
+1. Log it using the Bug Report Template at the bottom.
+2. Note the test ID, browser used, and screenshot.
+3. Classify severity: Critical (blocks workflow), High, Medium, or Low.
+
+Please complete this checklist and report your sign-off status once done. Thanks!"
+
+================================================================================
+TEST SUITE 1: USER REGISTRATION & AUTHENTICATION
+================================================================================
+[ ] AUTH-01: Standard Registration
+    - Action: Go to /register. Fill Name, valid Email (testqa_<timestamp>@test.com),
+      Password (Password123!), Confirm Password (Password123!). Click 'Create Account'.
+    - Expected: Redirects to /dashboard, toast notification, JWT stored in localStorage.
+
+[ ] AUTH-02: Password Mismatch Validation
+    - Action: In /register, enter mismatched passwords.
+    - Expected: Blocked with error "Passwords do not match".
+
+[ ] AUTH-03: Short Password Validation
+    - Action: Enter password under 6 chars.
+    - Expected: Blocked with error "Password must be at least 6 characters".
+
+[ ] AUTH-04: Duplicate Email Handling
+    - Action: Register with existing email.
+    - Expected: HTTP 400 "An account with this email already exists".
+
+[ ] AUTH-05: Standard User Login
+    - Action: Go to /login. Enter registered credentials. Click 'Sign In'.
+    - Expected: Authenticates, redirects to /dashboard, profile loaded.
+
+[ ] AUTH-06: Invalid Login Credentials
+    - Action: Enter wrong password.
+    - Expected: Error message "Invalid email or password".
+
+[ ] AUTH-07: Logout & Route Protection
+    - Action: Click Sign Out.
+    - Expected: Session cleared, redirects to /login. Trying to access /dashboard
+      redirects back to /login.
+
+================================================================================
+TEST SUITE 2: 1-CLICK INSTANT DEMO MODE
+================================================================================
+[ ] DEMO-01: Instant Demo Access
+    - Action: Open /login in Incognito. Click purple 'Instant Demo Login' card.
+    - Expected: Instantly loads 'Alex Rivera' (demo@worksync.io) and opens /dashboard.
+
+[ ] DEMO-02: Pre-seeded Workflows
+    - Action: Click Workflows in sidebar.
+    - Expected: Shows 4 pre-seeded workflows: Email to Slack, Form to Discord,
+      Webhook to Sheets, Backup to Teams.
+
+[ ] DEMO-03: Pre-seeded Analytics
+    - Action: View Dashboard.
+    - Expected: Metric cards populated (4 total workflows), 7-day trend chart active.
+
+================================================================================
+TEST SUITE 3: DASHBOARD & REAL-TIME ANALYTICS
+================================================================================
+[ ] DASH-01: Metric Cards Accuracy
+    - Action: Verify Total Workflows, Active, Total Executions, Success Rate.
+    - Expected: Clean numeric values, no NaN/undefined.
+
+[ ] DASH-02: 7-Day Activity Chart
+    - Action: Hover over bar chart columns.
+    - Expected: Tooltips display exact success/fail execution counts per day.
+
+[ ] DASH-03: New Workflow Action
+    - Action: Click 'New Workflow' button on top header.
+    - Expected: Navigates directly to /workflows/create.
+
+[ ] DASH-04: Recent Executions Feed
+    - Action: Check Recent Executions list.
+    - Expected: Status badges, execution duration (ms), timestamps accurate.
+
+================================================================================
+TEST SUITE 4: WORKFLOW BUILDER & CRUD
+================================================================================
+[ ] WF-01: Pipeline Configuration
+    - Action: Go to /workflows/create. Enter name & description.
+    - Expected: Visual step cards load for Trigger, Condition, Action.
+
+[ ] WF-02: Trigger Configuration
+    - Action: Select Webhook -> Catch Webhook.
+    - Expected: Generated unique webhook URL appears (wh_...).
+
+[ ] WF-03: Condition Logic
+    - Action: Add condition: trigger.amount greater_than 100.
+    - Expected: Rule persists in visual flow.
+
+[ ] WF-04: Action Step
+    - Action: Select Slack -> Send Channel Message with variable template.
+    - Expected: Dynamic variables {{trigger.amount}} render properly.
+
+[ ] WF-05: Save Workflow
+    - Action: Click 'Save Workflow'.
+    - Expected: Saved to database, appears in /workflows list.
+
+[ ] WF-06: Toggle Active State
+    - Action: Click active toggle switch on /workflows.
+    - Expected: Status toggles to Inactive, background scheduler updates.
+
+[ ] WF-07: Duplicate Workflow
+    - Action: Click '...' menu -> Duplicate.
+    - Expected: Clones workflow with '(Copy)' suffix.
+
+[ ] WF-08: Delete Workflow
+    - Action: Click '...' menu -> Delete -> Confirm.
+    - Expected: Workflow cleanly removed from UI and database.
+
+================================================================================
+TEST SUITE 5: EXECUTION SIMULATION & LOGS
+================================================================================
+[ ] EXEC-01: Test Workflow Simulation
+    - Action: In workflow builder or details, click 'Test Workflow Simulation'.
+      Provide test JSON payload. Click 'Execute Test'.
+    - Expected: Real-time transition (queued -> running -> success).
+
+[ ] EXEC-02: Condition Evaluation Pass
+    - Action: Run test meeting condition criteria.
+    - Expected: Step logs show condition passed, action executed.
+
+[ ] EXEC-03: Condition Evaluation Fail
+    - Action: Run test failing condition criteria.
+    - Expected: Step logs show condition failed, action gracefully skipped.
+
+[ ] EXEC-04: Step Logs Inspection
+    - Action: Open execution log drawer.
+    - Expected: Shows Trigger, Condition, and Action with timestamps and payloads.
+
+================================================================================
+TEST SUITE 6: INBOUND WEBHOOK INGESTION
+================================================================================
+[ ] WH-01: Public Inbound Webhook Trigger
+    - Action: Copy webhook URL. Send POST request via curl/terminal:
+      curl -i -X POST <URL> -H "Content-Type: application/json" -d '{"amount": 150}'
+    - Expected: HTTP 202 Accepted, {"success": true, "message": "Queued 1..."}.
+
+[ ] WH-02: Execution Reflection in History
+    - Action: Refresh /history page.
+    - Expected: Webhook event appears at the top of task history.
+
+[ ] WH-03: Rate Limiting
+    - Action: Rapidly send >60 requests in 1 minute.
+    - Expected: Rate limiter returns HTTP 429 Too Many Requests.
+
+================================================================================
+TEST SUITE 7: APPS & INTEGRATIONS
+================================================================================
+[ ] APPS-01: Catalog Display
+    - Action: Navigate to /apps.
+    - Expected: Displays 10 apps: Slack, Gmail, Sheets, Discord, Teams, etc.
+
+[ ] APPS-02: Slack Webhook Connection
+    - Action: Click Slack -> Connect. Enter valid webhook URL -> Connect.
+    - Expected: Badge turns green (Connected). URL encrypted with AES-256-GCM.
+
+[ ] APPS-03: SSRF Malicious URL Rejection
+    - Action: In Slack connect, enter arbitrary host like https://evil.com/leak.
+    - Expected: Rejected with "Invalid Slack webhook URL host".
+
+[ ] APPS-04: Disconnect App
+    - Action: Click Disconnect on Slack.
+    - Expected: Badge returns to gray (Not Connected).
+
+[ ] APPS-05: Google OAuth Redirect
+    - Action: Click Connect on Gmail or Google Sheets.
+    - Expected: Redirects to accounts.google.com consent screen.
+
+================================================================================
+TEST SUITE 8: TASK HISTORY & OBSERVABILITY
+================================================================================
+[ ] HIST-01: History Listing
+    - Action: Go to /history.
+    - Expected: Paginated table with workflow name, duration, date, status.
+
+[ ] HIST-02: Filter by Status
+    - Action: Filter by 'Success' or 'Failed'.
+    - Expected: Table filters dynamically.
+
+[ ] HIST-03: Raw Payload Inspection
+    - Action: Click any execution row.
+    - Expected: Drawer shows trigger payload, action result, and duration in ms.
+
+================================================================================
+TEST SUITE 9: USER SETTINGS & CUSTOMIZATION
+================================================================================
+[ ] SET-01: Profile Name Update
+    - Action: Go to /settings. Update name -> Save.
+    - Expected: Updates successfully, reflected in top navbar.
+
+[ ] SET-02: Notification Preferences
+    - Action: Toggle email & auto-retry options -> Save.
+    - Expected: Settings persist after page reload.
+
+[ ] SET-03: Personal Webhook Key
+    - Action: Click Copy next to personal webhook key (ws_...).
+    - Expected: Key copied to clipboard with confirmation toast.
+
+================================================================================
+TEST SUITE 10: RESPONSIVENESS & BROWSERS
+================================================================================
+[ ] RESP-01: Mobile Layout (375px)
+    - Action: View in mobile resolution.
+    - Expected: Responsive navbar, hamburger menu, stacked cards.
+
+[ ] RESP-02: Tablet Layout (768px)
+    - Action: View in tablet resolution.
+    - Expected: Adaptive 2-column grid.
+
+[ ] RESP-03: Cross-Browser
+    - Action: Test on Chrome, Firefox, Safari/Edge.
+    - Expected: Flawless rendering, no broken layouts or missing styles.
+
+================================================================================
+BUG REPORTING TEMPLATE
+================================================================================
+### [BUG] Descriptive Title
+
+- Test ID: (e.g. WF-05 or APPS-02)
+- Severity: [Critical / High / Medium / Low]
+- Environment: Production (https://work-sync-six.vercel.app/)
+- Browser & OS: (e.g. Chrome 129 on Windows 11)
+
+Steps to Reproduce:
+1. Navigate to ...
+2. Click on ...
+3. Enter ...
+4. Click Submit
+
+Expected Result:
+[What should happen]
+
+Actual Result:
+[What actually happened]
+
+Screenshots / Console Errors:
+[Paste console errors or attach screenshot]
+================================================================================

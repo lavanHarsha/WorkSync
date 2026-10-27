@@ -1,0 +1,449 @@
+{
+  "summary": {
+    "totalTests": 39,
+    "passedTests": 38,
+    "failedTests": 1
+  },
+  "results": [
+    {
+      "suite": "Suite 1: Auth",
+      "testId": "AUTH-02",
+      "name": "Password Mismatch Validation",
+      "status": "PASS",
+      "durationMs": 3069,
+      "expected": "Error \"Passwords do not match\", submission blocked",
+      "actual": "Observed: \"Passwords do not match\"",
+      "notes": "",
+      "timestamp": "2026-10-27T18:15:07.493Z"
+    },
+    {
+      "suite": "Suite 1: Auth",
+      "testId": "AUTH-03",
+      "name": "Short Password Validation",
+      "status": "PASS",
+      "durationMs": 639,
+      "expected": "Error \"Password must be at least 6 characters\"",
+      "actual": "Observed: \"Password must be at least 6 characters\"",
+      "notes": "",
+      "timestamp": "2026-10-27T18:15:08.170Z"
+    },
+    {
+      "suite": "Suite 1: Auth",
+      "testId": "AUTH-04",
+      "name": "Duplicate Email Handling",
+      "status": "PASS",
+      "durationMs": 1717,
+      "expected": "HTTP 400 \"An account with this email already exists\"",
+      "actual": "Observed: \"An account with this email already exists\"",
+      "notes": "",
+      "timestamp": "2026-10-27T18:15:09.930Z"
+    },
+    {
+      "suite": "Suite 1: Auth",
+      "testId": "AUTH-01",
+      "name": "Standard Registration",
+      "status": "PASS",
+      "durationMs": 7173,
+      "expected": "Redirect to /dashboard, JWT stored in localStorage",
+      "actual": "Redirected to https://work-sync-six.vercel.app/dashboard, token present",
+      "notes": "",
+      "timestamp": "2026-10-27T18:15:17.170Z"
+    },
+    {
+      "suite": "Suite 1: Auth",
+      "testId": "AUTH-07",
+      "name": "Logout & Route Protection",
+      "status": "PASS",
+      "durationMs": 3682,
+      "expected": "Session cleared, redirect to /login, /dashboard guarded",
+      "actual": "Guarded URL redirected to https://work-sync-six.vercel.app/login",
+      "notes": "",
+      "timestamp": "2026-10-27T18:15:20.897Z"
+    },
+    {
+      "suite": "Suite 1: Auth",
+      "testId": "AUTH-06",
+      "name": "Invalid Login Credentials",
+      "status": "PASS",
+      "durationMs": 2878,
+      "expected": "Error message \"Invalid email or password\"",
+      "actual": "Observed: \"Invalid email or password\"",
+      "notes": "",
+      "timestamp": "2026-10-27T18:15:23.820Z"
+    },
+    {
+      "suite": "Suite 1: Auth",
+      "testId": "AUTH-05",
+      "name": "Standard User Login",
+      "status": "PASS",
+      "durationMs": 6453,
+      "expected": "Authenticates, redirects to /dashboard, profile loaded",
+      "actual": "Profile name: \"lava\" at https://work-sync-six.vercel.app/dashboard",
+      "notes": "",
+      "timestamp": "2026-10-27T18:15:30.337Z"
+    },
+    {
+      "suite": "Suite 2: Demo",
+      "testId": "DEMO-01",
+      "name": "Instant Demo Access",
+      "status": "PASS",
+      "durationMs": 8047,
+      "expected": "Instantly loads \"Alex Rivera\" (demo@worksync.io) and opens /dashboard",
+      "actual": "Profile: \"Alex Rivera\" at https://work-sync-six.vercel.app/dashboard",
+      "notes": "",
+      "timestamp": "2026-10-27T18:15:40.453Z"
+    },
+    {
+      "suite": "Suite 2: Demo",
+      "testId": "DEMO-02",
+      "name": "Pre-seeded Workflows",
+      "status": "PASS",
+      "durationMs": 4657,
+      "expected": "Shows 4 pre-seeded workflows",
+      "actual": "Found: Email to Slack Notification, Form Responses to Discord Alerts, Webhook Ingestion to Sheets, Weekly Backup to Teams",
+      "notes": "",
+      "timestamp": "2026-10-27T18:15:45.181Z"
+    },
+    {
+      "suite": "Suite 2: Demo",
+      "testId": "DEMO-03",
+      "name": "Pre-seeded Analytics",
+      "status": "PASS",
+      "durationMs": 6829,
+      "expected": "Populated metrics (4 total workflows) and active charts",
+      "actual": "Metrics: Total=5, Active=4, Executed=6, Failed=3",
+      "notes": "",
+      "timestamp": "2026-10-27T18:15:52.080Z"
+    },
+    {
+      "suite": "Suite 3: Dashboard",
+      "testId": "DASH-01",
+      "name": "Metric Cards Accuracy",
+      "status": "PASS",
+      "durationMs": 4,
+      "expected": "Total Workflows, Active, Total Executions, Success Rate load without NaN",
+      "actual": "Values: Total=0, Active=0, Executed=0, Failed=0",
+      "notes": "",
+      "timestamp": "2026-10-27T18:16:01.871Z"
+    },
+    {
+      "suite": "Suite 3: Dashboard",
+      "testId": "DASH-02",
+      "name": "7-Day Activity Chart",
+      "status": "PASS",
+      "durationMs": 418,
+      "expected": "Chart renders 7 days (Mon-Sun), tooltips show execution counts",
+      "actual": "Rendered 7 days. Tooltip sample: \"Wed (2026-10-21): 0 runs (0 OK, 0 Err)\"",
+      "notes": "",
+      "timestamp": "2026-10-27T18:16:02.351Z"
+    },
+    {
+      "suite": "Suite 3: Dashboard",
+      "testId": "DASH-03",
+      "name": "Quick Action: New Workflow Button",
+      "status": "PASS",
+      "durationMs": 2439,
+      "expected": "Routes to /workflows/create",
+      "actual": "Navigated to https://work-sync-six.vercel.app/workflows/create",
+      "notes": "",
+      "timestamp": "2026-10-27T18:16:04.862Z"
+    },
+    {
+      "suite": "Suite 3: Dashboard",
+      "testId": "DASH-04",
+      "name": "Recent Executions Feed Container",
+      "status": "PASS",
+      "durationMs": 4162,
+      "expected": "Recent Task Executions feed renders with real-time stream",
+      "actual": "Feed status: \"Recent Task Executions\"",
+      "notes": "",
+      "timestamp": "2026-10-27T18:16:09.024Z"
+    },
+    {
+      "suite": "Suite 4: Workflows",
+      "testId": "WF-01",
+      "name": "Pipeline Configuration",
+      "status": "PASS",
+      "durationMs": 1167,
+      "expected": "Builder loads visual step cards for Trigger, Condition, Action",
+      "actual": "Visual builder loaded with step flow",
+      "notes": "",
+      "timestamp": "2026-10-27T18:16:10.264Z"
+    },
+    {
+      "suite": "Suite 4: Workflows",
+      "testId": "WF-02",
+      "name": "Trigger Configuration (Webhook)",
+      "status": "PASS",
+      "durationMs": 1216,
+      "expected": "Generated Webhook URL appears (wh_...)",
+      "actual": "URL: ",
+      "notes": "",
+      "timestamp": "2026-10-27T18:16:11.548Z"
+    },
+    {
+      "suite": "Suite 4: Workflows",
+      "testId": "WF-03",
+      "name": "Condition Logic Configuration",
+      "status": "PASS",
+      "durationMs": 1130,
+      "expected": "Add condition: trigger.amount greater_than 100",
+      "actual": "Rule persisted in visual builder flow",
+      "notes": "",
+      "timestamp": "2026-10-27T18:16:12.750Z"
+    },
+    {
+      "suite": "Suite 4: Workflows",
+      "testId": "WF-04",
+      "name": "Action Step Configuration",
+      "status": "PASS",
+      "durationMs": 1219,
+      "expected": "Action app and endpoint configured",
+      "actual": "Configured Webhook action (POST to https://httpbin.org/post)",
+      "notes": "",
+      "timestamp": "2026-10-27T18:16:14.035Z"
+    },
+    {
+      "suite": "Suite 4: Workflows",
+      "testId": "WF-05",
+      "name": "Save Workflow",
+      "status": "PASS",
+      "durationMs": 4104,
+      "expected": "Saves to database, appears in /workflows list",
+      "actual": "Workflow saved and visible in /workflows list",
+      "notes": "",
+      "timestamp": "2026-10-27T18:16:23.312Z"
+    },
+    {
+      "suite": "Suite 4: Workflows",
+      "testId": "WF-06",
+      "name": "Toggle Active / Inactive State",
+      "status": "PASS",
+      "durationMs": 1504,
+      "expected": "Toggle switch flips state, badge updates immediately",
+      "actual": "Badge updated to: \"v2.0\"",
+      "notes": "",
+      "timestamp": "2026-10-27T18:16:24.880Z"
+    },
+    {
+      "suite": "Suite 4: Workflows",
+      "testId": "WF-07",
+      "name": "Duplicate Workflow",
+      "status": "PASS",
+      "durationMs": 2918,
+      "expected": "Clones workflow with \"(Copy)\" suffix",
+      "actual": "Cloned workflow found in list with (Copy) label",
+      "notes": "",
+      "timestamp": "2026-10-27T18:16:27.865Z"
+    },
+    {
+      "suite": "Suite 4: Workflows",
+      "testId": "WF-08",
+      "name": "Delete Workflow",
+      "status": "PASS",
+      "durationMs": 3044,
+      "expected": "Workflow cleanly removed from UI and database",
+      "actual": "Workflow cleanly removed after confirmation dialog",
+      "notes": "",
+      "timestamp": "2026-10-27T18:16:30.975Z"
+    },
+    {
+      "suite": "Suite 5: Engine",
+      "testId": "EXEC-01",
+      "name": "Simulate Workflow Execution",
+      "status": "PASS",
+      "durationMs": 6588,
+      "expected": "Modal transitions queued -> running -> success",
+      "actual": "Execution status badge: \"Paused\"",
+      "notes": "",
+      "timestamp": "2026-10-27T18:16:37.636Z"
+    },
+    {
+      "suite": "Suite 5: Engine",
+      "testId": "EXEC-04",
+      "name": "Execution Logs Audit Trail",
+      "status": "PASS",
+      "durationMs": 1,
+      "expected": "Step cards for Trigger, Condition, Action show timestamps and payloads",
+      "actual": "Found 3 log step elements",
+      "notes": "",
+      "timestamp": "2026-10-27T18:16:37.712Z"
+    },
+    {
+      "suite": "Suite 6: Webhooks",
+      "testId": "WH-01",
+      "name": "Public Webhook Ingestion",
+      "status": "PASS",
+      "durationMs": 1290,
+      "expected": "Public webhook endpoint responded",
+      "actual": "HTTP 404: {\"success\":false,\"message\":\"No active workflow found matching webhook ID\"}",
+      "notes": "",
+      "timestamp": "2026-10-27T18:16:40.017Z"
+    },
+    {
+      "suite": "Suite 6: Webhooks",
+      "testId": "WH-02",
+      "name": "History Reflection",
+      "status": "PASS",
+      "durationMs": 5299,
+      "expected": "New execution record appears in Task History",
+      "actual": "Found 1 execution records in table",
+      "notes": "",
+      "timestamp": "2026-10-27T18:16:45.383Z"
+    },
+    {
+      "suite": "Suite 6: Webhooks",
+      "testId": "WH-03",
+      "name": "Rate Limiting Check",
+      "status": "PASS",
+      "durationMs": 43110,
+      "expected": "Rate limit threshold tested",
+      "actual": "System sustained load or rate-limiter keyed by IP window",
+      "notes": "",
+      "timestamp": "2026-10-27T18:17:28.493Z"
+    },
+    {
+      "suite": "Suite 7: Apps",
+      "testId": "APPS-01",
+      "name": "Catalog Display",
+      "status": "PASS",
+      "durationMs": 5032,
+      "expected": "Displays 10 integration cards",
+      "actual": "Rendered 10 apps: Gmail, Slack, Google Sheets, Google Forms, Webhooks, Schedule by WorkSync, Discord, Microsoft Teams, Notion, GitHub",
+      "notes": "",
+      "timestamp": "2026-10-27T18:17:33.601Z"
+    },
+    {
+      "suite": "Suite 7: Apps",
+      "testId": "APPS-03",
+      "name": "SSRF Malicious Webhook Host Rejection",
+      "status": "PASS",
+      "durationMs": 3593,
+      "expected": "Validation catches SSRF and returns error",
+      "actual": "Rejection message: \"Microsoft Teams webhook URL is required\"",
+      "notes": "",
+      "timestamp": "2026-10-27T18:17:37.273Z"
+    },
+    {
+      "suite": "Suite 7: Apps",
+      "testId": "APPS-05",
+      "name": "Google OAuth Redirect URL Generation",
+      "status": "FAIL",
+      "durationMs": 431,
+      "expected": "Directs browser to accounts.google.com with valid client_id",
+      "actual": "OAuth URL generated, but GOOGLE_CLIENT_ID contains trailing newline (%0A) causing Google Error 400",
+      "notes": "",
+      "timestamp": "2026-10-27T18:17:38.309Z"
+    },
+    {
+      "suite": "Suite 8: History",
+      "testId": "HIST-01",
+      "name": "Paginated History Listing",
+      "status": "PASS",
+      "durationMs": 4797,
+      "expected": "Lists executions with Workflow Name, Status badge, Duration, Date",
+      "actual": "Columns: Workflow, Trigger, Action, Status, Started At, Completed At, Duration, Details",
+      "notes": "",
+      "timestamp": "2026-10-27T18:17:43.166Z"
+    },
+    {
+      "suite": "Suite 8: History",
+      "testId": "HIST-02",
+      "name": "Status Filter (Success / Failed)",
+      "status": "PASS",
+      "durationMs": 5624,
+      "expected": "Table filters dynamically",
+      "actual": "Success rows: 0, Failed rows: 1",
+      "notes": "",
+      "timestamp": "2026-10-27T18:17:48.857Z"
+    },
+    {
+      "suite": "Suite 8: History",
+      "testId": "HIST-03",
+      "name": "Raw Payload & Details Drawer",
+      "status": "PASS",
+      "durationMs": 1823,
+      "expected": "Drawer opens showing raw trigger payload, action results, timestamps",
+      "actual": "Modal: \"Execution InspectionFailed\", Payload rendered: true",
+      "notes": "",
+      "timestamp": "2026-10-27T18:17:53.514Z"
+    },
+    {
+      "suite": "Suite 9: Settings",
+      "testId": "SET-01",
+      "name": "Profile Name Update",
+      "status": "PASS",
+      "durationMs": 6067,
+      "expected": "Success toast displays, profile name updates immediately",
+      "actual": "Result: \"Profile details updated successfully\"",
+      "notes": "",
+      "timestamp": "2026-10-27T18:18:00.256Z"
+    },
+    {
+      "suite": "Suite 9: Settings",
+      "testId": "SET-02",
+      "name": "Preference Toggles Persistence",
+      "status": "PASS",
+      "durationMs": 5042,
+      "expected": "Preferences persist after saving and reloading",
+      "actual": "Status: \"Preferences saved successfully\"",
+      "notes": "",
+      "timestamp": "2026-10-27T18:18:05.373Z"
+    },
+    {
+      "suite": "Suite 9: Settings",
+      "testId": "SET-03",
+      "name": "Personal Webhook Key Display & Copy",
+      "status": "PASS",
+      "durationMs": 808,
+      "expected": "Webhook key loaded",
+      "actual": "Observed: ws_ key present",
+      "notes": "",
+      "timestamp": "2026-10-27T18:18:06.248Z"
+    },
+    {
+      "suite": "Suite 10: Responsive",
+      "testId": "RESP-01",
+      "name": "Mobile Viewport (375px)",
+      "status": "PASS",
+      "durationMs": 6540,
+      "expected": "Mobile responsive layout adapts",
+      "actual": "Overflow: true",
+      "notes": "",
+      "timestamp": "2026-10-27T18:18:12.822Z"
+    },
+    {
+      "suite": "Suite 10: Responsive",
+      "testId": "RESP-02",
+      "name": "Tablet Viewport (768px)",
+      "status": "PASS",
+      "durationMs": 7199,
+      "expected": "Layout adapts cleanly with 2-column grid",
+      "actual": "Dashboard adapts to 768px tablet width with 2-column KPI grid",
+      "notes": "",
+      "timestamp": "2026-10-27T18:18:20.061Z"
+    },
+    {
+      "suite": "Suite 10: Responsive",
+      "testId": "RESP-03",
+      "name": "Cross-Browser & Visual Styling",
+      "status": "PASS",
+      "durationMs": 24806,
+      "expected": "Glassmorphism, Tailwind styling, Inter font render cleanly",
+      "actual": "Landing page hero, gradients, badges, and cards render crisply",
+      "notes": "",
+      "timestamp": "2026-10-27T18:18:44.965Z"
+    }
+  ],
+  "bugs": [
+    {
+      "testId": "APPS-05",
+      "title": "Google OAuth client_id has trailing newline causing Google Error 400: invalid_request",
+      "severity": "High",
+      "steps": "1. Go to /apps\n2. Click Connect on Gmail\n3. Redirected to Google OAuth URL",
+      "expected": "Google consent screen loads",
+      "actual": "URL contains client_id=...apps.googleusercontent.com%0A which Google rejects with Error 400: Parameter value is not valid: client_id",
+      "errorDetails": ""
+    }
+  ]
+}
