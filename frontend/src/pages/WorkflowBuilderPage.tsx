@@ -1173,10 +1173,10 @@ export const WorkflowBuilderPage: React.FC = () => {
                     Recipient Email *
                   </label>
                   <input
-                    type="email"
+                    type="text"
                     value={actionParams.recipient || ''}
                     onChange={(e) => setActionParams({ ...actionParams, recipient: e.target.value })}
-                    placeholder="recipient@company.com"
+                    placeholder="{{trigger.email}} or recipient@company.com"
                     className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm"
                   />
                 </div>

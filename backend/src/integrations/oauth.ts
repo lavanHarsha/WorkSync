@@ -57,7 +57,7 @@ export const verifyState = (state: string, appId: string, cookieNonce: string | 
 
 const requireEnv = (app: string, ...names: string[]): string[] =>
   names.map((n) => {
-    const v = process.env[n];
+    const v = process.env[n]?.trim();
     if (!v) throw invalidConfig(app, `${app} OAuth is not configured on the server (${n})`);
     return v;
   });

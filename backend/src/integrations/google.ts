@@ -8,8 +8,8 @@ export const GOOGLE_SCOPES: Record<string, string[]> = {
 };
 
 export const googleOAuthClient = (app: string, redirectUri?: string) => {
-  const clientId = process.env.GOOGLE_CLIENT_ID;
-  const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
+  const clientId = process.env.GOOGLE_CLIENT_ID?.trim();
+  const clientSecret = process.env.GOOGLE_CLIENT_SECRET?.trim();
   if (!clientId || !clientSecret) {
     throw invalidConfig(app, 'Google OAuth is not configured on the server (GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET)');
   }
