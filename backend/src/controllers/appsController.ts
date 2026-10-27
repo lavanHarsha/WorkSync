@@ -12,6 +12,7 @@ import {
   createState,
   exchangeCode,
   isOAuthApp,
+  sanitizeReturnTo,
   verifyState,
 } from '../integrations/oauth';
 
@@ -185,10 +186,20 @@ const WEBHOOK_HOSTS: Record<string, RegExp> = {
   teams: TEAMS_HOST,
 };
 
-const frontendBase = (): string =>
-  (process.env.FRONTEND_URL || (process.env.CORS_ORIGINS || '').split(',')[0] || 'http://localhost:5173')
-    .trim()
-    .replace(/\/$/, '');
+const frontendBase = (): string => {
+  const fe = process.env.FRONTEND_URL?.trim().replace(/\/$/, '');
+  if (fe && fe !== 'https://worksync.vercel.app') {
+    return fe;
+  }
+  const origins = (process.env.CORS_ORIGINS || '')
+    .split(',')
+    .map((o) => o.trim().replace(/\/$/, ''))
+    .filter((o) => Boolean(o) && o !== 'https://worksync.vercel.app');
+  if (origins.length > 0) {
+    return origins[0];
+  }
+  return 'https://work-sync-six.vercel.app';
+};
 
 export const connectApp = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
   try {
@@ -267,7 +278,13 @@ export const oauthStart = async (req: AuthRequest, res: Response, next: NextFunc
       return;
     }
 
-    const { state, nonce } = createState(String(req.user?.id), appId);
+    const candidateReturnTo =
+      (typeof req.query.return_to === 'string' ? req.query.return_to : '') ||
+      req.headers.origin ||
+      (typeof req.headers.referer === 'string' ? req.headers.referer : '');
+    const validatedReturnTo = sanitizeReturnTo(candidateReturnTo);
+
+    const { state, nonce } = createState(String(req.user?.id), appId, validatedReturnTo);
     let url: string;
     try {
       url = buildAuthUrl(appId, state);
@@ -304,8 +321,22 @@ export const oauthStart = async (req: AuthRequest, res: Response, next: NextFunc
  */
 export const oauthCallback = async (req: Request, res: Response): Promise<void> => {
   const { appId } = req.params;
+  let targetFrontend = frontendBase();
+
+  const { code, state } = req.query;
+  if (typeof state === 'string') {
+    try {
+      const decoded = verifyState(state, appId, undefined);
+      if (decoded.returnTo) {
+        targetFrontend = decoded.returnTo;
+      }
+    } catch {
+      // formal verification below handles invalid states
+    }
+  }
+
   const back = (params: Record<string, string>) =>
-    res.redirect(`${frontendBase()}/apps?${new URLSearchParams(params)}`);
+    res.redirect(`${targetFrontend}/apps?${new URLSearchParams(params)}`);
 
   try {
     const catalogApp = APP_CATALOG.find((a) => a.id === appId);
@@ -318,13 +349,15 @@ export const oauthCallback = async (req: Request, res: Response): Promise<void> 
       back({ app: appId, error: 'access_denied' });
       return;
     }
-    const { code, state } = req.query;
     if (typeof code !== 'string' || typeof state !== 'string') {
       back({ app: appId, error: 'invalid_callback' });
       return;
     }
 
-    const { userId } = verifyState(state, appId, req.cookies?.[STATE_COOKIE]);
+    const { userId, returnTo } = verifyState(state, appId, req.cookies?.[STATE_COOKIE]);
+    if (returnTo) {
+      targetFrontend = returnTo;
+    }
     res.clearCookie(STATE_COOKIE, { path: '/api/apps' });
 
     const credentials = await exchangeCode(appId, code);

@@ -283,7 +283,9 @@ class ApiService {
   }
 
   async getOAuthStartUrl(appId: string) {
-    return this.request<{ success: boolean; url: string }>(`/apps/${appId}/oauth/start?mode=json`);
+    const origin = typeof window !== 'undefined' && window.location ? window.location.origin : '';
+    const query = origin ? `?mode=json&return_to=${encodeURIComponent(origin)}` : '?mode=json';
+    return this.request<{ success: boolean; url: string }>(`/apps/${appId}/oauth/start${query}`);
   }
 
   async disconnectApp(appId: string) {

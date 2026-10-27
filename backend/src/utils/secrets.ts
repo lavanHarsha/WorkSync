@@ -31,11 +31,11 @@ export const assertProductionConfig = (): void => {
   }
 
   // 2. Auto-detect FRONTEND_URL & CORS_ORIGINS
-  if (!process.env.FRONTEND_URL) {
-    process.env.FRONTEND_URL = 'https://worksync.vercel.app';
+  if (!process.env.FRONTEND_URL || process.env.FRONTEND_URL === 'https://worksync.vercel.app') {
+    process.env.FRONTEND_URL = 'https://work-sync-six.vercel.app';
   }
   if (!process.env.CORS_ORIGINS) {
-    process.env.CORS_ORIGINS = process.env.FRONTEND_URL;
+    process.env.CORS_ORIGINS = 'https://work-sync-six.vercel.app,https://worksync.vercel.app,http://localhost:5173,http://localhost:3000';
   }
 
   // 3. Ensure JWT_SECRET is present

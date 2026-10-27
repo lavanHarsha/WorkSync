@@ -22,15 +22,70 @@ export const redirectUriFor = (appId: string): string => {
   return `${base}/api/apps/${appId}/oauth/callback`;
 };
 
+/** Safe validation of client returnTo URL to prevent open redirects */
+export const sanitizeReturnTo = (rawUrl?: string): string | null => {
+  if (!rawUrl || typeof rawUrl !== 'string') return null;
+  try {
+    const parsed = new URL(rawUrl.trim());
+    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return null;
+
+    const host = parsed.hostname.toLowerCase();
+    // Allow localhost / loopback for local development
+    if (host === 'localhost' || host === '127.0.0.1') {
+      return parsed.origin;
+    }
+
+    // Allow all Vercel deployments (*.vercel.app)
+    if (host.endsWith('.vercel.app')) {
+      return parsed.origin;
+    }
+
+    // Allow configured FRONTEND_URL or CORS_ORIGINS
+    const allowed = [
+      process.env.FRONTEND_URL,
+      ...(process.env.CORS_ORIGINS || '').split(','),
+    ]
+      .filter(Boolean)
+      .map((entry) => {
+        try {
+          return new URL(entry!.trim()).origin.toLowerCase();
+        } catch {
+          return '';
+        }
+      })
+      .filter(Boolean);
+
+    if (allowed.includes(parsed.origin.toLowerCase())) {
+      return parsed.origin;
+    }
+
+    return null;
+  } catch {
+    return null;
+  }
+};
+
 /** Signed, short-lived state. The nonce is also set as an httpOnly cookie to bind it to this browser. */
-export const createState = (userId: string, appId: string): { state: string; nonce: string } => {
+export const createState = (
+  userId: string,
+  appId: string,
+  returnTo?: string | null
+): { state: string; nonce: string } => {
   const nonce = crypto.randomBytes(16).toString('hex');
-  const state = jwt.sign({ uid: userId, app: appId, nonce }, stateSecret(), { expiresIn: STATE_TTL_SECONDS });
+  const payload: Record<string, any> = { uid: userId, app: appId, nonce };
+  if (returnTo) {
+    payload.ret = returnTo;
+  }
+  const state = jwt.sign(payload, stateSecret(), { expiresIn: STATE_TTL_SECONDS });
   return { state, nonce };
 };
 
-export const verifyState = (state: string, appId: string, cookieNonce: string | undefined): { userId: string } => {
-  let payload: { uid: string; app: string; nonce: string };
+export const verifyState = (
+  state: string,
+  appId: string,
+  cookieNonce: string | undefined
+): { userId: string; returnTo?: string } => {
+  let payload: { uid: string; app: string; nonce: string; ret?: string };
   try {
     payload = jwt.verify(state, stateSecret()) as typeof payload;
   } catch {
@@ -52,7 +107,7 @@ export const verifyState = (state: string, appId: string, cookieNonce: string | 
     }
   }
 
-  return { userId: payload.uid };
+  return { userId: payload.uid, returnTo: payload.ret };
 };
 
 const requireEnv = (app: string, ...names: string[]): string[] =>
