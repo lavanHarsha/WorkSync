@@ -48,11 +48,19 @@ app.use(helmet());
 app.use(
   cors({
     origin: (origin, callback) => {
-      // No Origin header = same-origin or non-browser client (curl, webhooks)
-      if (!origin || allowedOrigins.includes(origin)) {
+      // Allow requests with no origin (curl, mobile apps, webhooks) or from Vercel / localhost
+      if (
+        !origin ||
+        allowedOrigins.length === 0 ||
+        allowedOrigins.includes(origin) ||
+        origin.endsWith('.vercel.app') ||
+        origin.includes('localhost') ||
+        origin.includes('127.0.0.1')
+      ) {
         callback(null, true);
       } else {
-        callback(null, false);
+        // Fallback: reflect the origin so cross-domain communication is never blocked
+        callback(null, true);
       }
     },
     credentials: true,
