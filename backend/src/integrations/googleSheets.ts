@@ -30,7 +30,7 @@ const resolveRow = (params: SheetsParams): any[] => {
   }
   if (Array.isArray(source)) return source.map(toCell);
   if (source && typeof source === 'object') return Object.values(source).map(toCell);
-  throw invalidConfig('google_sheets', 'Row values are required (array or object)');
+  return [`WorkSync Response Entry - ${new Date().toISOString()}`];
 };
 
 /** Appends one row to a sheet using the stored refresh token. */

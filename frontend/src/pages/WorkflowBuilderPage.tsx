@@ -1122,7 +1122,15 @@ export const WorkflowBuilderPage: React.FC = () => {
                 Insert Dynamic Trigger Variables:
               </span>
               <div className="flex flex-wrap gap-1.5">
-                {['sender', 'subject', 'snippet', 'body', 'from', 'event', 'timestamp'].map((tag) => (
+                {[
+                  'respondentEmail',
+                  'answers',
+                  'submittedAt',
+                  'sender',
+                  'subject',
+                  'body',
+                  'timestamp',
+                ].map((tag) => (
                   <button
                     key={tag}
                     type="button"
@@ -1235,6 +1243,22 @@ export const WorkflowBuilderPage: React.FC = () => {
                     placeholder="Sheet1"
                     className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm"
                   />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
+                    Row Columns (One per line)
+                  </label>
+                  <textarea
+                    rows={4}
+                    value={actionParams.columns || ''}
+                    onChange={(e) => setActionParams({ ...actionParams, columns: e.target.value })}
+                    placeholder="{{trigger.respondentEmail}}&#10;{{trigger.submittedAt}}&#10;{{trigger.answers}}"
+                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm font-mono"
+                  />
+                  <p className="text-[11px] text-slate-400 mt-1">
+                    Enter values to append as cells in the row. Line 1 = Col A, Line 2 = Col B, etc.
+                  </p>
                 </div>
               </div>
             )}
