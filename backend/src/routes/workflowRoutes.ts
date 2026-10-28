@@ -10,6 +10,7 @@ import {
   testWorkflow,
   getWorkflowHistory,
   handleIncomingWebhook,
+  pollWorkflowTrigger,
 } from '../controllers/workflowController';
 import { authenticate } from '../middleware/auth';
 import { validate } from '../middleware/validate';
@@ -40,6 +41,7 @@ router.delete('/:id', validate(idParams), deleteWorkflow);
 router.patch('/:id/toggle', validate(idParams), toggleWorkflow);
 router.post('/:id/duplicate', validate(idParams), duplicateWorkflow);
 router.post('/:id/test', validate(testWorkflowSchema), testWorkflow);
+router.post('/:id/poll', validate(idParams), pollWorkflowTrigger);
 router.get('/:id/history', validate(idParams), getWorkflowHistory);
 
 export default router;

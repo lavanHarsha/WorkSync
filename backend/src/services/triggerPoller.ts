@@ -48,3 +48,42 @@ export const runTriggerPoll = async (): Promise<{ polled: number; enqueued: numb
   }
   return { polled: workflows.length, enqueued, failed };
 };
+
+export const pollWorkflowNow = async (
+  workflowId: string,
+  userId: string
+): Promise<{ eventsFound: number; executions: any[]; lastError?: string | null }> => {
+  const wf = await Workflow.findOne({ _id: workflowId, userId });
+  if (!wf) throw new Error('Workflow not found');
+
+  try {
+    const { events, state } = await pollTrigger(wf);
+    const executions = [];
+    for (const ev of events) {
+      const res = await enqueueWorkflowExecution(
+        { workflowId: wf._id.toString(), userId, customTriggerData: ev.data },
+        { jobId: `evt-${wf._id}-${ev.key}`.replace(/[^A-Za-z0-9_-]/g, '_') }
+      );
+      executions.push(res);
+    }
+    await Workflow.updateOne(
+      { _id: wf._id },
+      { $set: { triggerState: { ...state, lastPolledAt: new Date().toISOString(), lastError: null } } }
+    );
+    return { eventsFound: events.length, executions, lastError: null };
+  } catch (err: any) {
+    await Workflow.updateOne(
+      { _id: wf._id },
+      {
+        $set: {
+          triggerState: {
+            ...(wf.triggerState || {}),
+            lastPolledAt: new Date().toISOString(),
+            lastError: err?.message || 'Polling failed',
+          },
+        },
+      }
+    );
+    throw err;
+  }
+};

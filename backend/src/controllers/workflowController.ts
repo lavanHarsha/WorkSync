@@ -425,3 +425,28 @@ export const handleIncomingWebhook = async (req: Request, res: Response, next: N
     next(error);
   }
 };
+
+/**
+ * On-demand Trigger Polling Endpoint
+ * POST /api/workflows/:id/poll
+ */
+export const pollWorkflowTrigger = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const userId = req.user?.id as string;
+    const { pollWorkflowNow } = await import('../services/triggerPoller');
+    const result = await pollWorkflowNow(req.params.id, userId);
+
+    res.status(200).json({
+      success: true,
+      message: result.eventsFound > 0
+        ? `Found and executed ${result.eventsFound} new event(s)`
+        : 'Trigger checked. No new responses detected yet.',
+      ...result,
+    });
+  } catch (error: any) {
+    res.status(400).json({
+      success: false,
+      message: error?.message || 'Failed to poll trigger',
+    });
+  }
+};

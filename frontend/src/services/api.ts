@@ -232,6 +232,13 @@ class ApiService {
     );
   }
 
+  async pollWorkflow(id: string) {
+    return this.request<{ success: boolean; message: string; eventsFound: number }>(
+      `/workflows/${id}/poll`,
+      { method: 'POST' }
+    );
+  }
+
   // Execution History APIs
   async getHistory(params?: { status?: string; workflowId?: string; page?: number; limit?: number }) {
     const query = new URLSearchParams();

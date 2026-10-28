@@ -60,15 +60,33 @@ export const enqueueWorkflowExecution = async (
   data: ExecutionJobData,
   options?: { jobId?: string; delay?: number }
 ) => {
-  const job = await executionQueue.add('execute-workflow', data, {
-    jobId: options?.jobId,
-    delay: options?.delay,
-  });
+  try {
+    const job = await executionQueue.add('execute-workflow', data, {
+      jobId: options?.jobId,
+      delay: options?.delay,
+    });
 
-  return {
-    jobId: job.id,
-    executionId: job.id, // Use job ID as execution ID for tracking
-  };
+    return {
+      jobId: job.id,
+      executionId: job.id, // Use job ID as execution ID for tracking
+    };
+  } catch (queueErr: any) {
+    logger.warn({ error: queueErr?.message }, 'BullMQ enqueue failed, executing workflow inline as fallback');
+    const { Workflow } = await import('../models/Workflow');
+    const { ExecutionEngine } = await import('../services/executionEngine');
+    const wf = await Workflow.findById(data.workflowId);
+    if (!wf || !wf.enabled) {
+      return { jobId: 'skipped', executionId: 'skipped' };
+    }
+    const exec = await ExecutionEngine.executeWorkflow(wf, data.userId, {
+      customTriggerData: data.customTriggerData,
+      isLiveWebhook: data.isLiveWebhook,
+    });
+    return {
+      jobId: exec._id.toString(),
+      executionId: exec._id.toString(),
+    };
+  }
 };
 
 /**

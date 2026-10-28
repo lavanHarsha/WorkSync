@@ -155,6 +155,16 @@ const startServer = async () => {
       } catch (queueErr: any) {
         logger.warn({ error: queueErr?.message }, 'Queue worker / scheduler delayed (Redis may be offline or initializing)');
       }
+
+      // Robust in-process poller loop: sweeps active external triggers (Forms, Sheets, Gmail, etc.) every 15s
+      setInterval(async () => {
+        try {
+          const { runTriggerPoll } = await import('./services/triggerPoller');
+          await runTriggerPoll();
+        } catch (pollErr: any) {
+          // Keep loop alive
+        }
+      }, 15_000);
     })();
   } catch (error: any) {
     logger.error({ error: error?.message }, 'Failed to start server');

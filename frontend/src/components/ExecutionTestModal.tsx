@@ -25,11 +25,14 @@ export const ExecutionTestModal: React.FC<ExecutionTestModalProps> = ({
   const [activeTab, setActiveTab] = useState<'timeline' | 'payload' | 'logs'>('timeline');
   const [error, setError] = useState<string | null>(null);
 
+  const [pollMessage, setPollMessage] = useState<string | null>(null);
+
   if (!workflow) return null;
 
   const handleRunTest = async () => {
     setIsRunning(true);
     setError(null);
+    setPollMessage(null);
     try {
       const res = await api.testWorkflow(workflow._id || (workflow as any).id);
       if (res.success && res.execution) {
@@ -43,9 +46,35 @@ export const ExecutionTestModal: React.FC<ExecutionTestModalProps> = ({
     }
   };
 
+  const handlePollNow = async () => {
+    setIsRunning(true);
+    setError(null);
+    setPollMessage(null);
+    try {
+      const res = await api.pollWorkflow(workflow._id || (workflow as any).id);
+      if (res.success) {
+        if (res.eventsFound > 0) {
+          const hist = await api.getWorkflowHistory(workflow._id || (workflow as any).id);
+          if (hist.success && hist.executions.length > 0) {
+            setExecution(hist.executions[0]);
+            if (onSuccess) onSuccess(hist.executions[0]);
+          }
+          setPollMessage(`Discovered and processed ${res.eventsFound} live event(s)!`);
+        } else {
+          setPollMessage(res.message || 'Checked trigger. No new unhandled responses detected yet.');
+        }
+      }
+    } catch (err: any) {
+      setError(err.message || 'Failed to check trigger');
+    } finally {
+      setIsRunning(false);
+    }
+  };
+
   const handleReset = () => {
     setExecution(null);
     setError(null);
+    setPollMessage(null);
   };
 
   return (
@@ -90,15 +119,31 @@ export const ExecutionTestModal: React.FC<ExecutionTestModalProps> = ({
             </div>
             <h3 className="text-lg font-bold text-slate-800 mb-1">Ready to Test Your Workflow</h3>
             <p className="text-sm text-slate-600 max-w-md mx-auto mb-6">
-              WorkSync will generate a live simulated trigger event, process conditions, and dispatch the automated action.
+              Test with a simulated payload, or fetch the latest live submitted response from your form.
             </p>
-            <button
-              onClick={handleRunTest}
-              className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-brand-600 to-indigo-700 text-white font-semibold text-sm shadow-md hover:shadow-lg hover:from-brand-700 hover:to-indigo-800 transition-all transform active:scale-95"
-            >
-              <Play size={16} fill="currentColor" />
-              Execute Workflow Test
-            </button>
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+              <button
+                onClick={handleRunTest}
+                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-brand-600 to-indigo-700 text-white font-semibold text-sm shadow-md hover:shadow-lg hover:from-brand-700 hover:to-indigo-800 transition-all transform active:scale-95"
+              >
+                <Play size={16} fill="currentColor" />
+                Execute Simulation
+              </button>
+              {['google_forms', 'google_sheets', 'gmail'].includes(workflow.trigger.app) && (
+                <button
+                  onClick={handlePollNow}
+                  className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-white hover:bg-slate-50 text-slate-800 font-semibold text-sm border border-slate-300 shadow-xs transition-all active:scale-95"
+                >
+                  <Sparkles size={16} className="text-brand-600" />
+                  Fetch Live Form Response
+                </button>
+              )}
+            </div>
+            {pollMessage && (
+              <p className="mt-4 text-xs font-semibold text-indigo-700 bg-indigo-50 py-2 px-3 rounded-lg inline-block border border-indigo-200">
+                {pollMessage}
+              </p>
+            )}
           </div>
         )}
 

@@ -150,23 +150,48 @@ const pollSheets = async (wf: IWorkflow, state: Record<string, any>): Promise<Po
 
 /* ------------------------------------------------------------------ Forms */
 
+const cleanFormId = (raw: any): string => {
+  const strVal = String(raw || '').trim();
+  const match = strVal.match(/\/d\/(?:e\/)?([a-zA-Z0-9_-]+)/);
+  if (match) return match[1];
+  return strVal.replace(/^form_/i, '');
+};
+
+const getGoogleCredentialsWithFallback = async (userId: string, preferredApp: string) => {
+  try {
+    const creds = await getCredentials(userId, preferredApp);
+    return { creds, app: preferredApp };
+  } catch (err) {
+    for (const fallback of ['google_forms', 'google_sheets', 'gmail']) {
+      if (fallback === preferredApp) continue;
+      try {
+        const creds = await getCredentials(userId, fallback);
+        return { creds, app: fallback };
+      } catch {
+        // try next
+      }
+    }
+    throw err;
+  }
+};
+
 const pollForms = async (wf: IWorkflow, state: Record<string, any>): Promise<PollResult> => {
   const userId = wf.userId.toString();
-  const creds = await getCredentials(userId, 'google_forms');
-  const auth = googleClientForRefreshToken('google_forms', creds.refreshToken);
+  const { creds, app: matchedApp } = await getGoogleCredentialsWithFallback(userId, 'google_forms');
+  const auth = googleClientForRefreshToken(matchedApp, creds.refreshToken);
   const params = wf.trigger.parameters || {};
 
-  const formId = str(params.formId);
+  const formId = cleanFormId(params.formId);
   if (!formId) throw invalidConfig('google_forms', 'Trigger is missing a Form ID');
 
-  const cursor: string | undefined = state.cursor;
-  if (!cursor) return { events: [], state: { cursor: new Date().toISOString(), seenIds: [] } };
+  // Look back 10 minutes on initial creation so recent test submissions are not lost
+  const cursor: string = state.cursor || new Date(Date.now() - 10 * 60 * 1000).toISOString();
 
   try {
     const forms = google.forms({ version: 'v1', auth });
     const [form, list] = await Promise.all([
       forms.forms.get({ formId }, { retry: false }),
-      forms.forms.responses.list({ formId, filter: `timestamp > ${cursor}`, pageSize: 50 }, { retry: false }),
+      forms.forms.responses.list({ formId, filter: `timestamp >= ${cursor}`, pageSize: 50 }, { retry: false }),
     ]);
 
     const titles: Record<string, string> = {};
@@ -178,7 +203,7 @@ const pollForms = async (wf: IWorkflow, state: Record<string, any>): Promise<Pol
     const seen: string[] = state.seenIds || [];
     const responses = (list.data.responses || [])
       .filter((r) => r.responseId && !seen.includes(r.responseId))
-      .sort((a, b) => String(a.lastSubmittedTime).localeCompare(String(b.lastSubmittedTime)))
+      .sort((a, b) => String(a.lastSubmittedTime || a.createTime).localeCompare(String(b.lastSubmittedTime || b.createTime)))
       .slice(0, MAX_EVENTS_PER_POLL);
 
     const events: TriggerEvent[] = responses.map((r) => {
@@ -186,20 +211,41 @@ const pollForms = async (wf: IWorkflow, state: Record<string, any>): Promise<Pol
       for (const [qid, a] of Object.entries(r.answers || {})) {
         answers[titles[qid] || qid] = (a.textAnswers?.answers || []).map((x) => x.value).join(', ');
       }
+
+      // Extract respondent email from Google metadata OR answer values
+      let email = (r.respondentEmail || '').trim();
+      if (!email) {
+        for (const [title, val] of Object.entries(answers)) {
+          if (typeof val === 'string') {
+            const match = val.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/);
+            if (match) {
+              email = match[0];
+              break;
+            }
+          }
+        }
+      }
+
+      const submittedAt = r.lastSubmittedTime || r.createTime || new Date().toISOString();
+
       return {
         key: r.responseId as string,
         data: {
           formId,
           responseId: r.responseId,
-          respondentEmail: r.respondentEmail || '',
+          respondentEmail: email,
+          email,
+          recipient: email,
+          sender: email,
           answers,
-          submittedAt: r.lastSubmittedTime || r.createTime,
+          submittedAt,
+          timestamp: submittedAt,
         },
       };
     });
 
     const newCursor = responses.length
-      ? String(responses[responses.length - 1].lastSubmittedTime || cursor)
+      ? String(responses[responses.length - 1].lastSubmittedTime || responses[responses.length - 1].createTime || cursor)
       : cursor;
     return {
       events,
