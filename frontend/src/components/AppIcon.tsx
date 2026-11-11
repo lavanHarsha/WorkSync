@@ -11,6 +11,11 @@ import {
   BookOpen,
   GitBranch,
   Layers,
+  Sparkles,
+  Send,
+  Database,
+  Smartphone,
+  CreditCard,
 } from 'lucide-react';
 
 interface AppIconProps {
@@ -123,6 +128,42 @@ export const AppIcon: React.FC<AppIconProps> = ({
         icon: GitBranch,
         bg: 'bg-neutral-100 text-neutral-800 border border-neutral-200',
         name: 'GitHub',
+      };
+      break;
+    case 'openai':
+    case 'chatgpt':
+      config = {
+        icon: Sparkles,
+        bg: 'bg-emerald-50 text-emerald-600 border border-emerald-200',
+        name: 'OpenAI',
+      };
+      break;
+    case 'telegram':
+      config = {
+        icon: Send,
+        bg: 'bg-sky-50 text-sky-500 border border-sky-200',
+        name: 'Telegram',
+      };
+      break;
+    case 'airtable':
+      config = {
+        icon: Database,
+        bg: 'bg-amber-50 text-amber-600 border border-amber-200',
+        name: 'Airtable',
+      };
+      break;
+    case 'twilio':
+      config = {
+        icon: Smartphone,
+        bg: 'bg-rose-50 text-rose-600 border border-rose-200',
+        name: 'Twilio',
+      };
+      break;
+    case 'stripe':
+      config = {
+        icon: CreditCard,
+        bg: 'bg-indigo-50 text-indigo-700 border border-indigo-200',
+        name: 'Stripe',
       };
       break;
   }

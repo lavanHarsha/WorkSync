@@ -7,14 +7,40 @@ export const idParams = { params: z.object({ id: objectId }) };
 const params = z.record(z.string(), z.any());
 
 const triggerSchema = z.object({
-  app: z.enum(['gmail', 'google_sheets', 'google_forms', 'slack', 'webhook', 'schedule', 'notion', 'discord', 'github']),
+  app: z.enum([
+    'gmail',
+    'google_sheets',
+    'google_forms',
+    'slack',
+    'webhook',
+    'schedule',
+    'notion',
+    'discord',
+    'github',
+    'airtable',
+    'stripe',
+  ]),
   event: z.string().trim().min(1).max(100),
   parameters: params.optional().default({}),
   webhookId: z.string().regex(/^wh_[a-z0-9]{6,32}$/).optional(),
 });
 
 const actionSchema = z.object({
-  app: z.enum(['slack', 'gmail', 'google_sheets', 'discord', 'teams', 'webhook', 'notion', 'github']),
+  app: z.enum([
+    'slack',
+    'gmail',
+    'google_sheets',
+    'discord',
+    'teams',
+    'webhook',
+    'notion',
+    'github',
+    'openai',
+    'telegram',
+    'airtable',
+    'twilio',
+    'stripe',
+  ]),
   action: z.string().trim().min(1).max(100),
   parameters: params.optional().default({}),
 });

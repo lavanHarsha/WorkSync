@@ -132,6 +132,36 @@ export class ExecutionEngine {
           created_at: now,
         };
 
+      case 'airtable':
+        return {
+          recordId: 'rec_' + Math.random().toString(36).substring(2, 10),
+          baseId: parameters?.baseId || 'app_CRM_1092',
+          tableName: parameters?.tableName || 'Leads',
+          fields: {
+            'Company Name': 'Acme Corp',
+            'Contact Email': 'partner@acme.org',
+            'Deal Value': '$12,000',
+            'Stage': 'Contract Sent',
+          },
+          createdTime: now,
+        };
+
+      case 'stripe':
+        return {
+          eventId: 'evt_' + Math.random().toString(36).substring(2, 12),
+          eventType: workflow.trigger.event || 'payment_succeeded',
+          amount: 9900,
+          currency: 'usd',
+          customer: {
+            id: 'cus_' + Math.random().toString(36).substring(2, 10),
+            email: 'customer@stripe-test.io',
+            name: 'Jane Doe',
+          },
+          paid: true,
+          receipt_url: 'https://pay.stripe.com/receipts/test_123',
+          created: Math.floor(Date.now() / 1000),
+        };
+
       default:
         return {
           message: 'Trigger event received',
@@ -315,6 +345,10 @@ export class ExecutionEngine {
       triggerTitle = 'Webhook payload received';
     } else if (workflow.trigger.app === 'schedule') {
       triggerTitle = 'Scheduled timer fired';
+    } else if (workflow.trigger.app === 'airtable') {
+      triggerTitle = 'New Airtable record created';
+    } else if (workflow.trigger.app === 'stripe') {
+      triggerTitle = 'Stripe payment event received';
     }
 
     logs.push({

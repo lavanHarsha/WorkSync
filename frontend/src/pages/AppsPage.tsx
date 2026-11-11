@@ -106,8 +106,12 @@ export const AppsPage: React.FC = () => {
           }, 1200);
         }
       } else {
+        const val = apiKeyInput.trim();
         const res = await api.connectApp(selectedApp.id, {
-          token: apiKeyInput || 'ws_token_' + Math.random().toString(36).substring(2, 10),
+          apiKey: val || 'ws_token_' + Math.random().toString(36).substring(2, 10),
+          token: val || 'ws_token_' + Math.random().toString(36).substring(2, 10),
+          botToken: val,
+          secretKey: val,
         });
         if (res.success) {
           setConnectionSuccess(true);
@@ -147,7 +151,7 @@ export const AppsPage: React.FC = () => {
     }
   };
 
-  const categories = ['All', 'Communication', 'Productivity', 'Developer Tools', 'Forms & Surveys'];
+  const categories = ['All', 'Communication', 'Productivity', 'Artificial Intelligence', 'Finances & Payments', 'Developer Tools', 'Forms & Surveys'];
 
   const filteredApps = apps.filter((app) => {
     const matchesCategory = activeCategory === 'All' || app.category === activeCategory;
@@ -355,11 +359,33 @@ export const AppsPage: React.FC = () => {
               <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-3">
                 <div className="flex items-center gap-2 text-xs font-semibold text-slate-700">
                   <Shield size={14} className="text-brand-600" />
-                  <span>Credentials</span>
+                  <span>
+                    {selectedApp.id === 'openai'
+                      ? 'OpenAI API Credentials'
+                      : selectedApp.id === 'telegram'
+                      ? 'Telegram Bot Token'
+                      : selectedApp.id === 'airtable'
+                      ? 'Airtable Personal Access Token'
+                      : selectedApp.id === 'twilio'
+                      ? 'Twilio Auth Credentials'
+                      : selectedApp.id === 'stripe'
+                      ? 'Stripe API Keys'
+                      : 'Credentials'}
+                  </span>
                 </div>
                 <div>
                   <label className="block text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-1">
-                    API Key or Access Token
+                    {selectedApp.id === 'openai'
+                      ? 'OpenAI API Key (sk-...)'
+                      : selectedApp.id === 'telegram'
+                      ? 'Bot Token'
+                      : selectedApp.id === 'airtable'
+                      ? 'Personal Access Token (pat...)'
+                      : selectedApp.id === 'twilio'
+                      ? 'Auth Token or API Key'
+                      : selectedApp.id === 'stripe'
+                      ? 'Secret Key (sk_test_... / sk_live_...)'
+                      : 'API Key or Access Token'}
                   </label>
                   <div className="relative">
                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
@@ -369,11 +395,34 @@ export const AppsPage: React.FC = () => {
                       type="password"
                       value={apiKeyInput}
                       onChange={(e) => setApiKeyInput(e.target.value)}
-                      placeholder="Enter API key or leave blank for auto-token"
+                      placeholder={
+                        selectedApp.id === 'openai'
+                          ? 'sk-proj-... or sk-...'
+                          : selectedApp.id === 'telegram'
+                          ? '123456789:ABCdefGhIJKlmNoPQ...'
+                          : selectedApp.id === 'airtable'
+                          ? 'pat.xxxxxxxxxxxxxxxx'
+                          : selectedApp.id === 'twilio'
+                          ? 'Enter Twilio Auth Token'
+                          : selectedApp.id === 'stripe'
+                          ? 'sk_test_51...'
+                          : 'Enter API key or leave blank for auto-token'
+                      }
                       className="w-full pl-9 pr-3 py-2 bg-white rounded-xl border border-slate-200 text-xs font-mono text-slate-800"
                     />
                   </div>
                 </div>
+                <p className="text-[11px] text-slate-400">
+                  {selectedApp.id === 'openai'
+                    ? 'Your secret API key will be encrypted at rest and used only for your workflows.'
+                    : selectedApp.id === 'telegram'
+                    ? 'Obtain your bot token by messaging @BotFather on Telegram.'
+                    : selectedApp.id === 'airtable'
+                    ? 'Generate a personal access token under Airtable Developer Hub.'
+                    : selectedApp.id === 'stripe'
+                    ? 'Find your Secret Key under Stripe Dashboard > Developers > API keys.'
+                    : 'Credentials are encrypted with AES-256-GCM before storage.'}
+                </p>
               </div>
             )}
 

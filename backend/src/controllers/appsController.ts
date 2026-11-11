@@ -152,7 +152,77 @@ export const APP_CATALOG = [
       { id: 'create_issue', name: 'Create Issue', description: 'Opens a new issue in a GitHub repository' },
     ],
   },
+  {
+    id: 'openai',
+    name: 'OpenAI',
+    category: 'Artificial Intelligence',
+    icon: 'Sparkles',
+    color: '#10A37F',
+    description: 'Generate text, summarize emails & documents, and analyze sentiment with GPT models.',
+    triggers: [],
+    actions: [
+      { id: 'generate_text', name: 'Generate Text', description: 'Prompts OpenAI ChatGPT to generate or edit content' },
+      { id: 'summarize', name: 'Summarize Text', description: 'Creates concise executive bullet points from messages or tickets' },
+      { id: 'analyze_sentiment', name: 'Analyze Sentiment', description: 'Evaluates positive, neutral, or negative tonality' },
+    ],
+  },
+  {
+    id: 'telegram',
+    name: 'Telegram',
+    category: 'Communication',
+    icon: 'Send',
+    color: '#229ED9',
+    description: 'Send instant messages, automated alerts, and formatted updates to Telegram channels or group chats.',
+    triggers: [],
+    actions: [
+      { id: 'send_message', name: 'Send Message', description: 'Sends message to Telegram chat or channel' },
+    ],
+  },
+  {
+    id: 'airtable',
+    name: 'Airtable',
+    category: 'Productivity',
+    icon: 'Database',
+    color: '#FCB400',
+    description: 'Create records and trigger automations whenever new entries are added to Airtable bases.',
+    triggers: [
+      { id: 'new_record', name: 'New Record', description: 'Triggers when a new row is created in Airtable' },
+    ],
+    actions: [
+      { id: 'create_record', name: 'Create Record', description: 'Appends a new record to your Airtable table' },
+    ],
+  },
+  {
+    id: 'twilio',
+    name: 'Twilio',
+    category: 'Communication',
+    icon: 'Smartphone',
+    color: '#F22F46',
+    description: 'Dispatch mission-critical SMS notifications, OTP codes, and customer text alerts anywhere in the world.',
+    triggers: [],
+    actions: [
+      { id: 'send_sms', name: 'Send SMS', description: 'Sends an SMS text message to a phone number' },
+    ],
+  },
+  {
+    id: 'stripe',
+    name: 'Stripe',
+    category: 'Finances & Payments',
+    icon: 'CreditCard',
+    color: '#635BFF',
+    description: 'Trigger workflows from customer charges, payments, and invoices, and automatically create customer profiles.',
+    triggers: [
+      { id: 'payment_succeeded', name: 'Payment Succeeded', description: 'Triggers when a charge or invoice is paid' },
+      { id: 'customer_created', name: 'New Customer', description: 'Triggers when a customer account is created' },
+    ],
+    actions: [
+      { id: 'create_customer', name: 'Create Customer', description: 'Creates a new customer record in Stripe' },
+    ],
+  },
 ];
+
+/** Apps that connect via API key / token instead of OAuth or incoming Webhooks */
+export const API_KEY_APPS = ['openai', 'telegram', 'airtable', 'twilio', 'stripe'] as const;
 
 /** Apps that need no credentials. */
 export const BUILT_IN_APPS = ['webhook', 'schedule'];
@@ -222,7 +292,7 @@ export const connectApp = async (req: AuthRequest, res: Response, next: NextFunc
       return;
     }
 
-    if (!WEBHOOK_HOSTS[appId]) {
+    if (!WEBHOOK_HOSTS[appId] && !(API_KEY_APPS as readonly string[]).includes(appId as any)) {
       res.status(400).json({
         success: false,
         message: `${catalogApp.name} is built in and needs no connection`,
@@ -230,7 +300,7 @@ export const connectApp = async (req: AuthRequest, res: Response, next: NextFunc
       return;
     }
 
-    let dataToStore = authData;
+    let dataToStore = authData || {};
     if (WEBHOOK_HOSTS[appId]) {
       try {
         const url = assertHttpUrl(appId, authData?.webhookUrl, {
@@ -241,6 +311,15 @@ export const connectApp = async (req: AuthRequest, res: Response, next: NextFunc
       } catch (err) {
         res.status(400).json({ success: false, message: (err as Error).message });
         return;
+      }
+    } else if ((API_KEY_APPS as readonly string[]).includes(appId as any)) {
+      if (typeof authData === 'string') {
+        dataToStore = { apiKey: authData.trim() };
+      } else if (authData && typeof authData === 'object') {
+        dataToStore = {
+          ...authData,
+          apiKey: (authData.apiKey || authData.token || authData.botToken || authData.secretKey || '').toString().trim(),
+        };
       }
     }
 

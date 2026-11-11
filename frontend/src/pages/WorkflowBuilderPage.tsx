@@ -183,6 +183,18 @@ export const WorkflowBuilderPage: React.FC = () => {
       description: 'Trigger on repository issues, PRs, or releases',
       events: ['New Issue Opened', 'Pull Request Created'],
     },
+    {
+      id: 'airtable',
+      name: 'Airtable',
+      description: 'Trigger on new records created in Airtable bases',
+      events: ['New Record'],
+    },
+    {
+      id: 'stripe',
+      name: 'Stripe',
+      description: 'Trigger on successful payments or new customer registrations',
+      events: ['Payment Succeeded', 'New Customer'],
+    },
   ];
 
   // Supported Action Apps & Events
@@ -223,16 +235,52 @@ export const WorkflowBuilderPage: React.FC = () => {
       actions: ['Send Message'],
     },
     {
-      id: 'webhook',
-      name: 'Webhooks',
-      description: 'Dispatch custom HTTP POST/GET requests to external APIs',
-      actions: ['Send Request'],
+      id: 'openai',
+      name: 'OpenAI',
+      description: 'Generate text, summarize documents, or analyze sentiment',
+      actions: ['Generate Text', 'Summarize', 'Analyze Sentiment'],
+    },
+    {
+      id: 'telegram',
+      name: 'Telegram',
+      description: 'Send alerts, updates, and messages via Telegram Bot',
+      actions: ['Send Message'],
+    },
+    {
+      id: 'airtable',
+      name: 'Airtable',
+      description: 'Create rows and insert structured records into Airtable tables',
+      actions: ['Create Record'],
+    },
+    {
+      id: 'twilio',
+      name: 'Twilio',
+      description: 'Deliver SMS text messages and real-time alerts to phone numbers',
+      actions: ['Send SMS'],
+    },
+    {
+      id: 'stripe',
+      name: 'Stripe',
+      description: 'Create customer accounts and billing records in Stripe',
+      actions: ['Create Customer'],
+    },
+    {
+      id: 'github',
+      name: 'GitHub',
+      description: 'Create issues, pull requests, or log repository updates',
+      actions: ['Create Issue'],
     },
     {
       id: 'notion',
       name: 'Notion',
       description: 'Insert new items into Notion databases',
       actions: ['Create Page'],
+    },
+    {
+      id: 'webhook',
+      name: 'Webhooks',
+      description: 'Dispatch custom HTTP POST/GET requests to external APIs',
+      actions: ['Send Request'],
     },
   ];
 
@@ -257,6 +305,10 @@ export const WorkflowBuilderPage: React.FC = () => {
       setWebhookUrl(api.getWebhookUrl(whId));
     } else if (appId === 'schedule') {
       setTriggerParams({ frequency: 'every_hour' });
+    } else if (appId === 'airtable') {
+      setTriggerParams({ baseId: 'app_crm_workspace', tableName: 'Leads' });
+    } else if (appId === 'stripe') {
+      setTriggerParams({ minAmount: 0, currency: 'usd' });
     }
   };
 
@@ -295,6 +347,40 @@ export const WorkflowBuilderPage: React.FC = () => {
         team: 'Engineering',
         channel: 'General',
         message: 'WorkSync system update: {{trigger.subject}}',
+      });
+    } else if (appId === 'openai') {
+      setActionParams({
+        prompt: 'Draft a polite and professional acknowledgement reply for:\n{{trigger.body || trigger.snippet || trigger.answers}}',
+        model: 'gpt-4o-mini',
+      });
+    } else if (appId === 'telegram') {
+      setActionParams({
+        chatId: '@worksync_alerts',
+        message: '🔔 WorkSync Alert: {{trigger.subject || trigger.event}}\n\nDetails: {{trigger.body || trigger.snippet || trigger.respondentEmail}}',
+      });
+    } else if (appId === 'airtable') {
+      setActionParams({
+        baseId: 'app_crm_workspace',
+        tableName: 'Responses',
+        Name: '{{trigger.respondentEmail || trigger.sender}}',
+        Notes: '{{trigger.subject || trigger.body}}',
+      });
+    } else if (appId === 'twilio') {
+      setActionParams({
+        to: '+1234567890',
+        message: 'WorkSync Alert: {{trigger.subject || trigger.event}} occurred at {{trigger.timestamp}}',
+      });
+    } else if (appId === 'stripe') {
+      setActionParams({
+        name: '{{trigger.respondentEmail || trigger.sender}}',
+        email: '{{trigger.respondentEmail || trigger.email}}',
+        description: 'Customer created from WorkSync workflow',
+      });
+    } else if (appId === 'github') {
+      setActionParams({
+        repo: 'organization/repo',
+        title: 'WorkSync Issue: {{trigger.subject}}',
+        body: 'Automated issue created from WorkSync trigger: {{trigger.body || trigger.snippet}}',
       });
     } else if (appId === 'webhook') {
       setActionParams({
@@ -971,6 +1057,65 @@ export const WorkflowBuilderPage: React.FC = () => {
               </div>
             )}
 
+            {selectedTriggerApp === 'airtable' && (
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
+                    Airtable Base ID *
+                  </label>
+                  <input
+                    type="text"
+                    value={triggerParams.baseId || ''}
+                    onChange={(e) => setTriggerParams({ ...triggerParams, baseId: e.target.value })}
+                    placeholder="app..."
+                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm font-mono"
+                  />
+                  <p className="text-[11px] text-slate-400 mt-1">Found in your Airtable URL after airtable.com/</p>
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
+                    Table Name *
+                  </label>
+                  <input
+                    type="text"
+                    value={triggerParams.tableName || 'Leads'}
+                    onChange={(e) => setTriggerParams({ ...triggerParams, tableName: e.target.value })}
+                    placeholder="Leads or Tasks"
+                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm"
+                  />
+                </div>
+              </div>
+            )}
+
+            {selectedTriggerApp === 'stripe' && (
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
+                    Currency Filter
+                  </label>
+                  <input
+                    type="text"
+                    value={triggerParams.currency || 'usd'}
+                    onChange={(e) => setTriggerParams({ ...triggerParams, currency: e.target.value })}
+                    placeholder="usd, eur, gbp"
+                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm uppercase font-mono"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
+                    Minimum Charge Amount ($)
+                  </label>
+                  <input
+                    type="number"
+                    value={triggerParams.minAmount ?? 0}
+                    onChange={(e) => setTriggerParams({ ...triggerParams, minAmount: Number(e.target.value) })}
+                    placeholder="0"
+                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm"
+                  />
+                </div>
+              </div>
+            )}
+
             {/* Optional Condition Filters */}
             <div className="pt-4 border-t border-slate-100">
               <div className="flex items-center justify-between mb-3">
@@ -1287,6 +1432,349 @@ export const WorkflowBuilderPage: React.FC = () => {
                     value={actionParams.message || ''}
                     onChange={(e) => setActionParams({ ...actionParams, message: e.target.value })}
                     placeholder="🚀 Dispatch: {{trigger.subject}}"
+                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm font-mono"
+                  />
+                </div>
+              </div>
+            )}
+
+            {selectedActionApp === 'teams' && (
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
+                    Channel or Group Name *
+                  </label>
+                  <input
+                    type="text"
+                    value={actionParams.channel || 'General'}
+                    onChange={(e) => setActionParams({ ...actionParams, channel: e.target.value })}
+                    placeholder="General or Announcements"
+                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
+                    Message / Adaptive Card *
+                  </label>
+                  <textarea
+                    rows={4}
+                    value={actionParams.message || ''}
+                    onChange={(e) => setActionParams({ ...actionParams, message: e.target.value })}
+                    placeholder="System Alert: {{trigger.subject}}"
+                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm font-mono"
+                  />
+                </div>
+              </div>
+            )}
+
+            {selectedActionApp === 'openai' && (
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
+                    AI Model
+                  </label>
+                  <select
+                    value={actionParams.model || 'gpt-4o-mini'}
+                    onChange={(e) => setActionParams({ ...actionParams, model: e.target.value })}
+                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 bg-white text-sm"
+                  >
+                    <option value="gpt-4o-mini">GPT-4o Mini (Fast & Cost-Efficient)</option>
+                    <option value="gpt-4o">GPT-4o (State of the art Omnimodal)</option>
+                    <option value="gpt-3.5-turbo">GPT-3.5 Turbo (Legacy standard)</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
+                    System Instructions (Optional)
+                  </label>
+                  <input
+                    type="text"
+                    value={actionParams.systemPrompt || ''}
+                    onChange={(e) => setActionParams({ ...actionParams, systemPrompt: e.target.value })}
+                    placeholder="e.g. You are a professional customer support executive."
+                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
+                    Prompt / Instructions *
+                  </label>
+                  <textarea
+                    rows={4}
+                    value={actionParams.prompt || ''}
+                    onChange={(e) => setActionParams({ ...actionParams, prompt: e.target.value })}
+                    placeholder="Draft a thank you reply for {{trigger.respondentEmail}}: {{trigger.answers}}"
+                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm font-mono"
+                  />
+                </div>
+              </div>
+            )}
+
+            {selectedActionApp === 'telegram' && (
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
+                    Telegram Chat ID or @Channel *
+                  </label>
+                  <input
+                    type="text"
+                    value={actionParams.chatId || ''}
+                    onChange={(e) => setActionParams({ ...actionParams, chatId: e.target.value })}
+                    placeholder="@my_channel or -100123456789"
+                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm font-mono"
+                  />
+                  <p className="text-[11px] text-slate-400 mt-1">
+                    Send a message to your bot or add the bot as admin in your channel.
+                  </p>
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
+                    Telegram Message *
+                  </label>
+                  <textarea
+                    rows={4}
+                    value={actionParams.message || ''}
+                    onChange={(e) => setActionParams({ ...actionParams, message: e.target.value })}
+                    placeholder="WorkSync Alert: {{trigger.subject}}"
+                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm font-mono"
+                  />
+                </div>
+              </div>
+            )}
+
+            {selectedActionApp === 'airtable' && (
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
+                    Airtable Base ID *
+                  </label>
+                  <input
+                    type="text"
+                    value={actionParams.baseId || ''}
+                    onChange={(e) => setActionParams({ ...actionParams, baseId: e.target.value })}
+                    placeholder="app..."
+                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm font-mono"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
+                    Table Name *
+                  </label>
+                  <input
+                    type="text"
+                    value={actionParams.tableName || 'Responses'}
+                    onChange={(e) => setActionParams({ ...actionParams, tableName: e.target.value })}
+                    placeholder="Responses or Contacts"
+                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
+                    Primary Record Name
+                  </label>
+                  <input
+                    type="text"
+                    value={actionParams.Name || ''}
+                    onChange={(e) => setActionParams({ ...actionParams, Name: e.target.value })}
+                    placeholder="{{trigger.respondentEmail || trigger.sender}}"
+                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm font-mono"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
+                    Details / Notes
+                  </label>
+                  <textarea
+                    rows={3}
+                    value={actionParams.Notes || ''}
+                    onChange={(e) => setActionParams({ ...actionParams, Notes: e.target.value })}
+                    placeholder="{{trigger.subject || trigger.body || trigger.answers}}"
+                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm font-mono"
+                  />
+                </div>
+              </div>
+            )}
+
+            {selectedActionApp === 'twilio' && (
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
+                    Recipient Phone Number (To) *
+                  </label>
+                  <input
+                    type="tel"
+                    value={actionParams.to || ''}
+                    onChange={(e) => setActionParams({ ...actionParams, to: e.target.value })}
+                    placeholder="+1234567890"
+                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm font-mono"
+                  />
+                  <p className="text-[11px] text-slate-400 mt-1">Must include country code (e.g. +1 for US)</p>
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
+                    SMS Message Body *
+                  </label>
+                  <textarea
+                    rows={4}
+                    value={actionParams.message || ''}
+                    onChange={(e) => setActionParams({ ...actionParams, message: e.target.value })}
+                    placeholder="WorkSync notification: {{trigger.subject || trigger.event}}"
+                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm font-mono"
+                  />
+                </div>
+              </div>
+            )}
+
+            {selectedActionApp === 'stripe' && (
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
+                    Customer Email *
+                  </label>
+                  <input
+                    type="email"
+                    value={actionParams.email || ''}
+                    onChange={(e) => setActionParams({ ...actionParams, email: e.target.value })}
+                    placeholder="{{trigger.respondentEmail || trigger.email}}"
+                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm font-mono"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
+                    Customer Full Name
+                  </label>
+                  <input
+                    type="text"
+                    value={actionParams.name || ''}
+                    onChange={(e) => setActionParams({ ...actionParams, name: e.target.value })}
+                    placeholder="{{trigger.sender || trigger.name}}"
+                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
+                    Description / Metadata
+                  </label>
+                  <input
+                    type="text"
+                    value={actionParams.description || ''}
+                    onChange={(e) => setActionParams({ ...actionParams, description: e.target.value })}
+                    placeholder="Created via WorkSync Form Workflow"
+                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm"
+                  />
+                </div>
+              </div>
+            )}
+
+            {selectedActionApp === 'github' && (
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
+                    Repository (owner/repo) *
+                  </label>
+                  <input
+                    type="text"
+                    value={actionParams.repo || ''}
+                    onChange={(e) => setActionParams({ ...actionParams, repo: e.target.value })}
+                    placeholder="octocat/Hello-World"
+                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm font-mono"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
+                    Issue Title *
+                  </label>
+                  <input
+                    type="text"
+                    value={actionParams.title || ''}
+                    onChange={(e) => setActionParams({ ...actionParams, title: e.target.value })}
+                    placeholder="Issue: {{trigger.subject}}"
+                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm font-medium"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
+                    Issue Body Description
+                  </label>
+                  <textarea
+                    rows={4}
+                    value={actionParams.body || ''}
+                    onChange={(e) => setActionParams({ ...actionParams, body: e.target.value })}
+                    placeholder="Automated task logged from {{trigger.sender}}: {{trigger.body}}"
+                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm font-mono"
+                  />
+                </div>
+              </div>
+            )}
+
+            {selectedActionApp === 'notion' && (
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
+                    Database ID *
+                  </label>
+                  <input
+                    type="text"
+                    value={actionParams.databaseId || ''}
+                    onChange={(e) => setActionParams({ ...actionParams, databaseId: e.target.value })}
+                    placeholder="Enter Notion Database UUID"
+                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm font-mono"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
+                    Page Title *
+                  </label>
+                  <input
+                    type="text"
+                    value={actionParams.title || ''}
+                    onChange={(e) => setActionParams({ ...actionParams, title: e.target.value })}
+                    placeholder="WorkSync: {{trigger.subject}}"
+                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm"
+                  />
+                </div>
+              </div>
+            )}
+
+            {selectedActionApp === 'webhook' && (
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
+                    Endpoint URL *
+                  </label>
+                  <input
+                    type="url"
+                    value={actionParams.url || ''}
+                    onChange={(e) => setActionParams({ ...actionParams, url: e.target.value })}
+                    placeholder="https://api.yourdomain.com/v1/webhook"
+                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm font-mono"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
+                    HTTP Method
+                  </label>
+                  <select
+                    value={actionParams.method || 'POST'}
+                    onChange={(e) => setActionParams({ ...actionParams, method: e.target.value })}
+                    className="w-full px-4 py-2.5 rounded-xl border border-slate-200 bg-white text-sm"
+                  >
+                    <option value="POST">POST</option>
+                    <option value="PUT">PUT</option>
+                    <option value="PATCH">PATCH</option>
+                    <option value="GET">GET</option>
+                    <option value="DELETE">DELETE</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
+                    Request Payload Body (JSON or Text)
+                  </label>
+                  <textarea
+                    rows={4}
+                    value={actionParams.body || ''}
+                    onChange={(e) => setActionParams({ ...actionParams, body: e.target.value })}
+                    placeholder='{"email": "{{trigger.respondentEmail}}", "event": "form.submitted"}'
                     className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm font-mono"
                   />
                 </div>

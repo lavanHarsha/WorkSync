@@ -6,6 +6,7 @@ import { getCredentials } from './credentials';
 import { googleClientForRefreshToken } from './google';
 import { invalidConfig, wrapSdkError } from './errors';
 import { normalizeEventId } from './actionId';
+import { pollAirtable } from './airtable';
 
 /** One new thing that happened in the external app. `key` makes enqueueing idempotent. */
 export interface TriggerEvent {
@@ -19,7 +20,7 @@ export interface PollResult {
   state: Record<string, any>;
 }
 
-export const POLLED_APPS = ['gmail', 'google_sheets', 'google_forms', 'github', 'notion'] as const;
+export const POLLED_APPS = ['gmail', 'google_sheets', 'google_forms', 'github', 'notion', 'airtable'] as const;
 export const isPolledApp = (app: string): boolean => (POLLED_APPS as readonly string[]).includes(app);
 
 const MAX_EVENTS_PER_POLL = 20;
@@ -381,6 +382,7 @@ export const pollTrigger = async (wf: IWorkflow): Promise<PollResult> => {
     case 'google_forms': return pollForms(wf, state);
     case 'github': return pollGithub(wf, state);
     case 'notion': return pollNotion(wf, state);
+    case 'airtable': return pollAirtable(wf, state);
     default: return { events: [], state };
   }
 };

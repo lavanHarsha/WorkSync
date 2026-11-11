@@ -10,6 +10,9 @@ export const getCredentials = async (
   userId: string | mongoose.Types.ObjectId,
   appId: string
 ): Promise<Record<string, any>> => {
+  if (mongoose.connection.readyState !== 1) {
+    throw notConnected(appId);
+  }
   const integration = await Integration.findOne({ userId, appId, connected: true });
   if (!integration) throw notConnected(appId);
 

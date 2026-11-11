@@ -7,6 +7,11 @@ import { sendGmail } from './gmail';
 import { appendSheetRow } from './googleSheets';
 import { createGithubIssue } from './github';
 import { createNotionPage } from './notion';
+import { generateOpenAIText, summarizeOpenAIText, analyzeOpenAISentiment } from './openai';
+import { sendTelegramMessage } from './telegram';
+import { createAirtableRecord } from './airtable';
+import { sendTwilioSms } from './twilio';
+import { createStripeCustomer } from './stripe';
 import { normalizeActionId } from './actionId';
 
 export * from './errors';
@@ -28,6 +33,15 @@ const HANDLERS: Record<string, Record<string, Handler>> = {
   google_sheets: { add_row: appendSheetRow },
   github: { create_issue: createGithubIssue },
   notion: { create_page: createNotionPage },
+  openai: {
+    generate_text: generateOpenAIText,
+    summarize: summarizeOpenAIText,
+    analyze_sentiment: analyzeOpenAISentiment,
+  },
+  telegram: { send_message: sendTelegramMessage },
+  airtable: { create_record: createAirtableRecord },
+  twilio: { send_sms: sendTwilioSms },
+  stripe: { create_customer: createStripeCustomer },
 };
 
 export const hasRealIntegration = (app: string): boolean => app in HANDLERS;

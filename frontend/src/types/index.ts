@@ -7,7 +7,9 @@ export type TriggerApp =
   | 'schedule'
   | 'notion'
   | 'discord'
-  | 'github';
+  | 'github'
+  | 'airtable'
+  | 'stripe';
 
 export type ActionApp = 
   | 'slack'
@@ -17,7 +19,12 @@ export type ActionApp =
   | 'teams'
   | 'webhook'
   | 'notion'
-  | 'github';
+  | 'github'
+  | 'openai'
+  | 'telegram'
+  | 'airtable'
+  | 'twilio'
+  | 'stripe';
 
 export type ExecutionStatus = 'success' | 'running' | 'failed';
 

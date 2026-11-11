@@ -2,6 +2,7 @@
   "name": "worksync",
   "version": "1.0.0",
   "description": "WorkSync Automation Platform - Full Stack Web Application",
+  "license": "MIT",
   "scripts": {
     "dev": "concurrently \"npm run dev --prefix backend\" \"npm run dev --prefix frontend\"",
     "start": "concurrently \"npm run start --prefix backend\" \"npm run preview --prefix frontend\"",
